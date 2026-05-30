@@ -26,3 +26,11 @@ return await ctx.db
 .collect();
 },
 });
+
+Accessing user information client-side
+To access the authenticated user's information, use Clerk's User object, which can be accessed using Clerk's useUser() hook.
+example: components/Badge.tsx TS
+export default function Badge() {
+const { user } = useUser();
+return <span>Logged in as {user.fullName}</span>;
+}
