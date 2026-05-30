@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+## 🎨 Unit {set} - AI-Powered Design Platform
 
-## Getting Started
+A revolutionary design-to-code platform that transforms wireframes into production-ready web applications using the power of AI.
 
-First, run the development server:
+### ✨ Key Features
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+- **🔐 Secure Authentication** - Seamless user authentication powered by Clerk
+- **📁 Project Management** - Create and organize multiple design projects with dedicated canvases
+- **✏️ Interactive Canvas** - Draw, sketch, and create wireframes with intuitive design tools
+- **🤖 AI-Powered Generation** - Transform wireframes into functional web applications:
+  - Landing pages
+  - Dashboard interfaces
+  - Reusable components (cards, forms, etc.)
+- **💬 AI Chat Integration** - Real-time AI assistance for design improvements and iterations
+- **🎛️ Visual Editor** - Figma-like properties panel for manual element customization
+- **⚡ Real-time Collaboration** - Live updates and synchronization across all canvases
+- **📱 Responsive Design** - Generated components adapt to all screen sizes
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 🛠️ Tech Stack
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- **Frontend**: Next.js 16 with TypeScript
+- **Styling**: Tailwind CSS v4
+- **Authentication**: Clerk
+- **Backend**: Convex
+- **AI Integration**: Advanced AI models for design-to-code transformation
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 🚀 What Makes Unit {set} Special
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Transform your creative vision into reality with our AI-driven platform that bridges the gap between design and development. From simple sketches to complex interactive applications - all within a single, powerful canvas environment.
