@@ -10,21 +10,21 @@ import { BoundingBox } from "@/components/canvas/BoundingBox";
 import { SelectionBox } from "@/components/canvas/SelectionBox";
 
 // Import shape components
-import { Frame } from "@/shapes/frame";
-import { Rectangle } from "@/shapes/rectangle";
-import { Elipse } from "@/shapes/elipse";
-import { Line } from "@/shapes/line";
-import { Arrow } from "@/shapes/arrow";
-import { Stroke } from "@/shapes/stroke";
-import { Text } from "@/shapes/text";
+import { Frame } from "@/components/canvas/shapes/Frame";
+import { Rectangle } from "@/components/canvas/shapes/Rectangle";
+import { Ellipse } from "@/components/canvas/shapes/Ellipse";
+import { Line } from "@/components/canvas/shapes/Line";
+import { Arrow } from "@/components/canvas/shapes/Arrow";
+import { Stroke } from "@/components/canvas/shapes/Stroke";
+import { Text } from "@/components/canvas/shapes/Text";
 
 // Import preview components
-import { FramePreview } from "@/shapes/frame/preview";
-import { RectanglePreview } from "@/shapes/rectangle/preview";
-import { ElipsePreview } from "@/shapes/elipse/preview";
-import { LinePreview } from "@/shapes/line/preview";
-import { ArrowPreview } from "@/shapes/arrow/preview";
-import { FreeDrawStrokePreview } from "@/shapes/stroke/preview";
+import { FramePreview } from "@/components/canvas/shapes/FramePreview";
+import { RectanglePreview } from "@/components/canvas/shapes/RectanglePreview";
+import { EllipsePreview } from "@/components/canvas/shapes/EllipsePreview";
+import { LinePreview } from "@/components/canvas/shapes/LinePreview";
+import { ArrowPreview } from "@/components/canvas/shapes/ArrowPreview";
+import { FreeDrawStrokePreview } from "@/components/canvas/shapes/StrokePreview";
 
 function CanvasContent() {
   const {
@@ -113,7 +113,7 @@ function CanvasContent() {
               return <Rectangle key={shape.id} shape={shape} />;
             }
             if (shape.type === "ellipse") {
-              return <Elipse key={shape.id} shape={shape} />;
+              return <Ellipse key={shape.id} shape={shape} />;
             }
             if (shape.type === "freedraw") {
               return <Stroke key={shape.id} shape={shape} />;
@@ -167,7 +167,7 @@ function CanvasContent() {
                 />
               )}
               {draftShape.type === "ellipse" && (
-                <ElipsePreview
+                <EllipsePreview
                   startWorld={draftShape.startWorld}
                   currentWorld={draftShape.currentWorld}
                 />

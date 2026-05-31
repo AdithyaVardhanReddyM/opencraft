@@ -1,0 +1,38 @@
+import { Point } from "@/types/canvas";
+
+export const FreeDrawStrokePreview = ({
+  points,
+}: {
+  points: readonly Point[];
+}) => {
+  if (points.length < 2) return null;
+
+  const pathData = points.reduce((acc, point, index) => {
+    if (index === 0) {
+      return `M ${point.x} ${point.y}`;
+    }
+    return `${acc} L ${point.x} ${point.y}`;
+  }, "");
+
+  return (
+    <svg
+      className="absolute pointer-events-none"
+      style={{
+        left: 0,
+        top: 0,
+        width: "100%",
+        height: "100%",
+        overflow: "visible",
+      }}
+    >
+      <path
+        d={pathData}
+        stroke="#9ca3af"
+        strokeWidth={2}
+        fill="none"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+};
