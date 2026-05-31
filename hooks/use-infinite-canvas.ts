@@ -18,11 +18,25 @@ import { getTextShapeDimensions } from "@/lib/canvas/text-utils";
 
 const RAF_INTERVAL_MS = 8;
 
+const TOOL_HOTKEYS: Record<string, Tool> = {
+  s: "select",
+  h: "hand",
+  f: "frame",
+  r: "rect",
+  c: "ellipse",
+  l: "line",
+  a: "arrow",
+  d: "freedraw",
+  t: "text",
+  e: "eraser",
+};
+
 export interface UseInfiniteCanvasReturn {
   // State
   viewport: ViewportState;
   shapes: Shape[];
   currentTool: Tool;
+  activeTool: Tool;
   selectedShapes: SelectionMap;
   isSidebarOpen: boolean;
   hasSelectedText: boolean;
@@ -59,13 +73,14 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
   // Local state
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [, forceUpdate] = useState(0);
+  const [isHandOverride, setIsHandOverride] = useState(false);
 
   // Refs for DOM and interaction state
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const touchMapRef = useRef<Map<number, TouchPointer>>(new Map());
   const draftShapeRef = useRef<DraftShape | null>(null);
   const freeDrawPointsRef = useRef<Point[]>([]);
-  const isSpacePressed = useRef(false); // Note: actually shift key, not space
+  const isSpacePressed = useRef(false);
 
   // Interaction flags
   const isDrawingRef = useRef(false);
@@ -109,6 +124,7 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
   // Computed values
   const currentTool = shapesState.tool;
   const selectedShapes = shapesState.selected;
+  const activeTool = isHandOverride ? "hand" : currentTool;
 
   const hasSelectedText = Object.keys(selectedShapes).some((id) => {
     const shape = shapesState.shapes.entities[id];
@@ -127,15 +143,38 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
   // Keyboard event handlers
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent): void => {
-      if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && !e.repeat) {
+      const target = e.target as HTMLElement;
+      const isTypingElement =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable;
+
+      if (
+        (e.code === "Space" || e.key === " ") &&
+        !e.repeat &&
+        !isTypingElement
+      ) {
         e.preventDefault();
-        isSpacePressed.current = true;
-        dispatchViewport({ type: "HAND_TOOL_ENABLE" });
+        if (!isSpacePressed.current) {
+          isSpacePressed.current = true;
+          setIsHandOverride(true);
+          dispatchViewport({ type: "HAND_TOOL_ENABLE" });
+        }
+        return;
+      }
+
+      if (!isTypingElement) {
+        const key = e.key.toLowerCase();
+        const mappedTool = TOOL_HOTKEYS[key];
+        if (mappedTool) {
+          e.preventDefault();
+          dispatchShapes({ type: "SET_TOOL", payload: mappedTool });
+          return;
+        }
       }
 
       // Delete/Backspace handling
       if (e.key === "Delete" || e.key === "Backspace") {
-        const target = e.target as HTMLElement;
         const isInput =
           target.tagName === "INPUT" || target.tagName === "TEXTAREA";
 
@@ -147,10 +186,23 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
     };
 
     const onKeyUp = (e: KeyboardEvent): void => {
-      if ((e.code === "ShiftLeft" || e.code === "ShiftRight") && !e.repeat) {
+      const target = e.target as HTMLElement;
+      const isTypingElement =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.isContentEditable;
+
+      if (
+        (e.code === "Space" || e.key === " ") &&
+        !e.repeat &&
+        !isTypingElement
+      ) {
         e.preventDefault();
-        isSpacePressed.current = false;
-        dispatchViewport({ type: "HAND_TOOL_DISABLE" });
+        if (isSpacePressed.current) {
+          isSpacePressed.current = false;
+          setIsHandOverride(false);
+          dispatchViewport({ type: "HAND_TOOL_DISABLE" });
+        }
       }
     };
 
@@ -190,7 +242,7 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
       if (!isResizingRef.current || !resizeDataRef.current) return;
 
       const customEvent = e as CustomEvent;
-      const { shapeId, corner, initialBounds } = resizeDataRef.current;
+      const { shapeId, corner: handle, initialBounds } = resizeDataRef.current;
       const { clientX, clientY } = customEvent.detail;
 
       const canvasEl = canvasRef.current;
@@ -208,9 +260,28 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
       const shape = shapesState.shapes.entities[shapeId];
       if (!shape) return;
 
+      if (
+        (shape.type === "arrow" || shape.type === "line") &&
+        (handle === "line-start" || handle === "line-end")
+      ) {
+        const patch =
+          handle === "line-start"
+            ? { startX: world.x, startY: world.y }
+            : { endX: world.x, endY: world.y };
+
+        dispatchShapes({
+          type: "UPDATE_SHAPE",
+          payload: {
+            id: shapeId,
+            patch,
+          },
+        });
+        return;
+      }
+
       const newBounds = { ...initialBounds };
 
-      switch (corner) {
+      switch (handle) {
         case "nw":
           newBounds.w = Math.max(
             10,
@@ -242,6 +313,26 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
         case "se":
           newBounds.w = Math.max(10, world.x - initialBounds.x);
           newBounds.h = Math.max(10, world.y - initialBounds.y);
+          break;
+        case "n":
+          newBounds.h = Math.max(
+            10,
+            initialBounds.h + (initialBounds.y - world.y)
+          );
+          newBounds.y = world.y;
+          break;
+        case "s":
+          newBounds.h = Math.max(10, world.y - initialBounds.y);
+          break;
+        case "w":
+          newBounds.w = Math.max(
+            10,
+            initialBounds.w + (initialBounds.x - world.x)
+          );
+          newBounds.x = world.x;
+          break;
+        case "e":
+          newBounds.w = Math.max(10, world.x - initialBounds.x);
           break;
       }
 
@@ -466,9 +557,9 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
       canvasRef.current?.setPointerCapture?.(e.pointerId);
 
       const isPanButton = e.button === 1 || e.button === 2;
-      const panByShift = isSpacePressed.current && e.button === 0;
+      const panBySpace = isSpacePressed.current && e.button === 0;
 
-      if (isPanButton || panByShift) {
+      if (isPanButton || panBySpace) {
         const mode = isSpacePressed.current ? "shiftPanning" : "panning";
         dispatchViewport({
           type: "PAN_START",
@@ -478,6 +569,14 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
       }
 
       if (e.button === 0) {
+        if (currentTool === "hand") {
+          dispatchViewport({
+            type: "PAN_START",
+            payload: { screen: local, mode: "panning" },
+          });
+          return;
+        }
+
         if (currentTool === "select") {
           // Check if we hit a shape directly
           let hitShape = getShapeAtPoint(world, shapesList);
@@ -890,7 +989,17 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
   };
 
   const resetZoom = (): void => {
-    dispatchViewport({ type: "SET_ZOOM", payload: 1 });
+    const canvasEl = canvasRef.current;
+    if (canvasEl) {
+      const rect = canvasEl.getBoundingClientRect();
+      const center = { x: rect.width / 2, y: rect.height / 2 };
+      dispatchViewport({
+        type: "SET_SCALE",
+        payload: { scale: 1, originScreen: center },
+      });
+    } else {
+      dispatchViewport({ type: "SET_ZOOM", payload: 1 });
+    }
   };
 
   const getSelectionBox = (): { start: Point; current: Point } | null =>
@@ -900,6 +1009,7 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
     viewport,
     shapes: shapesList,
     currentTool,
+    activeTool,
     selectedShapes,
     isSidebarOpen,
     hasSelectedText,

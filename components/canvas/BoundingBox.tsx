@@ -1,15 +1,13 @@
 "use client";
 
-import type { Shape, ViewportState } from "@/types/canvas";
+import type { ResizeHandle, Shape, ViewportState } from "@/types/canvas";
 import { getTextShapeDimensions } from "@/lib/canvas/text-utils";
 
 interface BoundingBoxProps {
   shape: Shape;
   viewport: ViewportState;
-  onResizeStart: (corner: ResizeCorner, bounds: Bounds) => void;
+  onResizeStart: (corner: ResizeHandle, bounds: Bounds) => void;
 }
-
-type ResizeCorner = "nw" | "ne" | "sw" | "se" | "n" | "s" | "e" | "w";
 
 interface Bounds {
   x: number;
@@ -83,9 +81,12 @@ export function BoundingBox({
 
   const isLineOrArrow = shape.type === "arrow" || shape.type === "line";
 
-  const handlePointerDown = (corner: ResizeCorner, e: React.PointerEvent) => {
+  const handlePointerDown = (corner: ResizeHandle, e: React.PointerEvent) => {
     e.stopPropagation();
+    e.preventDefault();
     onResizeStart(corner, bounds);
+
+    const pointerId = e.pointerId;
 
     // Dispatch custom event with client coordinates
     window.dispatchEvent(
@@ -99,6 +100,27 @@ export function BoundingBox({
         },
       })
     );
+
+    const handlePointerMove = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) return;
+      window.dispatchEvent(
+        new CustomEvent("shape-resize-move", {
+          detail: { clientX: event.clientX, clientY: event.clientY },
+        })
+      );
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      if (event.pointerId !== pointerId) return;
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      window.removeEventListener("pointercancel", handlePointerUp);
+      window.dispatchEvent(new CustomEvent("shape-resize-end"));
+    };
+
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    window.addEventListener("pointercancel", handlePointerUp);
   };
 
   // For line/arrow shapes, only show endpoint handles
@@ -126,7 +148,7 @@ export function BoundingBox({
             border: "2px solid hsl(24 95% 53%)",
             borderRadius: "50%",
           }}
-          onPointerDown={(e) => handlePointerDown("nw", e)}
+          onPointerDown={(e) => handlePointerDown("line-start", e)}
         />
 
         {/* End point handle */}
@@ -141,7 +163,7 @@ export function BoundingBox({
             border: "2px solid hsl(24 95% 53%)",
             borderRadius: "50%",
           }}
-          onPointerDown={(e) => handlePointerDown("se", e)}
+          onPointerDown={(e) => handlePointerDown("line-end", e)}
         />
       </div>
     );

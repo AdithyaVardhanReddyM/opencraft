@@ -16,9 +16,10 @@ interface UseCanvasCursorReturn {
  */
 export function useCanvasCursor(): UseCanvasCursorReturn {
   const { shapes, viewport } = useCanvasContext();
-  const [isShiftPressed, setIsShiftPressed] = useState(false);
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const hasSelection = Object.keys(shapes.selected).length > 0;
 
-  // Listen for Shift key press/release
+  // Listen for Space key press/release to trigger temporary hand tool
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Ignore if user is typing in an input or textarea
@@ -31,14 +32,16 @@ export function useCanvasCursor(): UseCanvasCursorReturn {
         return;
       }
 
-      if (e.key === "Shift") {
-        setIsShiftPressed(true);
+      if ((e.code === "Space" || e.key === " ") && !e.repeat) {
+        e.preventDefault();
+        setIsSpacePressed(true);
       }
     };
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === "Shift") {
-        setIsShiftPressed(false);
+      if (e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        setIsSpacePressed(false);
       }
     };
 
@@ -60,8 +63,12 @@ export function useCanvasCursor(): UseCanvasCursorReturn {
     }
 
     // Priority 2: Shift key held (grab cursor)
-    if (shouldShowGrabCursor(isShiftPressed, viewport.mode)) {
+    if (shouldShowGrabCursor(isSpacePressed, viewport.mode)) {
       return "cursor-grab";
+    }
+
+    if (shapes.tool === "select" && hasSelection) {
+      return "cursor-move";
     }
 
     // Priority 3: Current tool cursor

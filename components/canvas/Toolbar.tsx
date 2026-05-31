@@ -2,6 +2,7 @@
 
 import {
   MousePointer2,
+  Hand,
   Hash,
   Square,
   Circle,
@@ -23,18 +24,20 @@ interface ToolConfig {
   id: Tool;
   icon: LucideIcon;
   label: string;
+  shortcut: string;
 }
 
 const TOOLS: ToolConfig[] = [
-  { id: "select", icon: MousePointer2, label: "Select" },
-  { id: "frame", icon: Hash, label: "Frame" },
-  { id: "rect", icon: Square, label: "Rectangle" },
-  { id: "ellipse", icon: Circle, label: "Ellipse" },
-  { id: "line", icon: Minus, label: "Line" },
-  { id: "arrow", icon: ArrowRight, label: "Arrow" },
-  { id: "freedraw", icon: Pencil, label: "Pencil" },
-  { id: "text", icon: Type, label: "Text" },
-  { id: "eraser", icon: Eraser, label: "Eraser" },
+  { id: "select", icon: MousePointer2, label: "Select", shortcut: "S" },
+  { id: "hand", icon: Hand, label: "Hand", shortcut: "H" },
+  { id: "frame", icon: Hash, label: "Frame", shortcut: "F" },
+  { id: "rect", icon: Square, label: "Rectangle", shortcut: "R" },
+  { id: "ellipse", icon: Circle, label: "Ellipse", shortcut: "C" },
+  { id: "line", icon: Minus, label: "Line", shortcut: "L" },
+  { id: "arrow", icon: ArrowRight, label: "Arrow", shortcut: "A" },
+  { id: "freedraw", icon: Pencil, label: "Draw", shortcut: "D" },
+  { id: "text", icon: Type, label: "Text", shortcut: "T" },
+  { id: "eraser", icon: Eraser, label: "Eraser", shortcut: "E" },
 ];
 
 export function Toolbar({ currentTool, onToolSelect }: ToolbarProps) {
@@ -51,13 +54,21 @@ export function Toolbar({ currentTool, onToolSelect }: ToolbarProps) {
               onClick={() => onToolSelect(tool.id)}
               aria-label={tool.label}
               aria-pressed={isActive}
-              className={`flex h-9 w-9 items-center justify-center rounded-md transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 ${
+              title={`${tool.label} (${tool.shortcut})`}
+              className={`relative flex h-9 w-9 items-center justify-center rounded-md transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 ${
                 isActive
                   ? "bg-primary text-primary-foreground"
                   : "bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground"
               }`}
             >
               <Icon className="h-4 w-4" />
+              <span
+                className={`pointer-events-none absolute bottom-0.5 right-0.5 text-[10px] font-semibold ${
+                  isActive ? "text-primary-foreground/80" : "text-foreground/70"
+                }`}
+              >
+                {tool.shortcut}
+              </span>
             </button>
           );
         })}

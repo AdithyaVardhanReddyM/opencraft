@@ -525,6 +525,10 @@ html {
   cursor: text;
 }
 
+.cursor-move {
+  cursor: move;
+}
+
 .cursor-grab {
   cursor: grab;
 }

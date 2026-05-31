@@ -31,7 +31,7 @@ function CanvasContent() {
   const {
     viewport,
     shapes,
-    currentTool,
+    activeTool,
     selectedShapes,
     onPointerDown,
     onPointerMove,
@@ -66,7 +66,7 @@ function CanvasContent() {
   return (
     <div className="relative h-screen w-full overflow-hidden bg-accent">
       {/* Toolbar */}
-      <Toolbar currentTool={currentTool} onToolSelect={selectTool} />
+      <Toolbar currentTool={activeTool} onToolSelect={selectTool} />
 
       {/* Zoom Bar */}
       <ZoomBar

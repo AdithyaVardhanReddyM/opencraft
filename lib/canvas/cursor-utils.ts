@@ -7,12 +7,14 @@ export type CursorClass =
   | "cursor-eraser"
   | "cursor-crosshair"
   | "cursor-text"
+  | "cursor-move"
   | "cursor-grab"
   | "cursor-grabbing";
 
 // Tool to cursor mapping
 export const TOOL_CURSOR_MAP: Record<Tool, CursorClass> = {
   select: "cursor-select",
+  hand: "cursor-grab",
   frame: "cursor-crosshair",
   rect: "cursor-crosshair",
   ellipse: "cursor-crosshair",
@@ -45,11 +47,11 @@ export function getCursorForViewportMode(
 
 /**
  * Determine if the grab cursor should be shown
- * (when Shift is pressed but not actively panning)
+ * (when the temporary pan key is held but not actively panning)
  */
 export function shouldShowGrabCursor(
-  isShiftPressed: boolean,
+  isPanKeyPressed: boolean,
   mode: ViewportMode
 ): boolean {
-  return isShiftPressed && mode === "idle";
+  return isPanKeyPressed && mode === "idle";
 }

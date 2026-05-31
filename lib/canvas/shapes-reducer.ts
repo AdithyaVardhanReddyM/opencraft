@@ -94,13 +94,15 @@ export function shapesReducer(
   action: ShapesAction
 ): ShapesState {
   switch (action.type) {
-    case "SET_TOOL":
+    case "SET_TOOL": {
+      const preservesSelection =
+        action.payload === "select" || action.payload === "hand";
       return {
         ...state,
         tool: action.payload,
-        // Clear selection when switching from select tool
-        selected: action.payload !== "select" ? {} : state.selected,
+        selected: preservesSelection ? state.selected : {},
       };
+    }
 
     case "ADD_FRAME": {
       const frameCounter = state.frameCounter + 1;

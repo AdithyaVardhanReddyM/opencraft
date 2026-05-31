@@ -29,6 +29,7 @@ export interface ViewportState {
 // Tool types
 export type Tool =
   | "select"
+  | "hand"
   | "frame"
   | "rect"
   | "ellipse"
@@ -37,6 +38,18 @@ export type Tool =
   | "line"
   | "text"
   | "eraser";
+
+export type ResizeHandle =
+  | "nw"
+  | "ne"
+  | "sw"
+  | "se"
+  | "n"
+  | "s"
+  | "e"
+  | "w"
+  | "line-start"
+  | "line-end";
 
 // Shape types
 export interface BaseShape {
@@ -165,7 +178,7 @@ export interface TouchPointer {
 // Resize data
 export interface ResizeData {
   shapeId: string;
-  corner: string;
+  corner: ResizeHandle;
   initialBounds: { x: number; y: number; w: number; h: number };
   startPoint: { x: number; y: number };
 }
