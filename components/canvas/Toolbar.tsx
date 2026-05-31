@@ -2,12 +2,14 @@
 
 import {
   MousePointer2,
+  Hash,
   Square,
-  RectangleHorizontal,
   Circle,
   Pencil,
   Type,
   Eraser,
+  ArrowRight,
+  Minus,
 } from "lucide-react";
 import type { Tool } from "@/types/canvas";
 import type { LucideIcon } from "lucide-react";
@@ -25,9 +27,11 @@ interface ToolConfig {
 
 const TOOLS: ToolConfig[] = [
   { id: "select", icon: MousePointer2, label: "Select" },
-  { id: "frame", icon: Square, label: "Frame" },
-  { id: "rect", icon: RectangleHorizontal, label: "Rectangle" },
+  { id: "frame", icon: Hash, label: "Frame" },
+  { id: "rect", icon: Square, label: "Rectangle" },
   { id: "ellipse", icon: Circle, label: "Ellipse" },
+  { id: "line", icon: Minus, label: "Line" },
+  { id: "arrow", icon: ArrowRight, label: "Arrow" },
   { id: "freedraw", icon: Pencil, label: "Pencil" },
   { id: "text", icon: Type, label: "Text" },
   { id: "eraser", icon: Eraser, label: "Eraser" },

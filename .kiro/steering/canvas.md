@@ -355,7 +355,9 @@ const restored = deserializeCanvasState(data);
 - Shift+click to add/remove from selection
 - Drag selected shape(s) to move
 - Click empty space to clear selection
-- Delete key to delete selected shapes (TODO: implement)
+- Drag on empty space to create selection box (multi-select)
+- Delete/Backspace key to delete selected shapes
+- Bounding boxes with resize handles shown for selected shapes
 
 ### Resizing
 
@@ -380,7 +382,18 @@ window.dispatchEvent(
 window.dispatchEvent(new CustomEvent("shape-resize-end"));
 ```
 
-Supported corners: `nw`, `ne`, `sw`, `se`
+**Supported corners:**
+
+- Rectangular shapes: `nw`, `ne`, `sw`, `se`, `n`, `s`, `e`, `w` (8 handles)
+- Line/Arrow shapes: Start and end point handles only
+- Freedraw shapes: Scales all points proportionally
+
+**Resize behavior:**
+
+- Maintains minimum size of 10px
+- Handles edge cases (vertical/horizontal lines)
+- Scales freedraw points while preserving shape
+- Updates shape state via `UPDATE_SHAPE` action
 
 ## Performance Optimizations
 
@@ -409,6 +422,67 @@ Use refs for state that doesn't need to trigger re-renders:
 - **Pan operations**: Batched with requestAnimationFrame
 - **Resize operations**: Batched with requestAnimationFrame
 
+## UI Components
+
+### Canvas UI Components
+
+Located in `components/canvas/`:
+
+1. **Toolbar** - Tool selection with icons
+
+   - Fixed position at top center
+   - Shows all available tools (select, frame, rect, ellipse, line, arrow, freedraw, text, eraser)
+   - Highlights active tool with primary color
+   - Uses Lucide React icons
+
+2. **ZoomBar** - Zoom controls
+
+   - Fixed position at bottom left
+   - Shows current zoom percentage
+   - Zoom in/out buttons with disabled states at min/max
+   - Respects viewport min/max scale constraints
+
+3. **HistoryPill** - Undo/redo controls
+
+   - Fixed position at bottom left (next to zoom bar)
+   - Undo/redo buttons with disabled states
+   - Currently placeholder (TODO: implement history)
+
+4. **BoundingBox** - Selection and resize handles
+
+   - Renders for each selected shape
+   - 8 resize handles for rectangular shapes (corners + edges)
+   - 2 handles for line/arrow shapes (endpoints)
+   - Orange border color (hsl(24 95% 53%))
+   - Handles pointer events for resizing
+
+5. **SelectionBox** - Multi-select box
+   - Dashed orange border
+   - Semi-transparent orange fill
+   - Shown during drag-to-select on empty space
+
+### Canvas Cursor Management
+
+The `useCanvasCursor` hook manages cursor appearance:
+
+```typescript
+const { cursorClass } = useCanvasCursor();
+```
+
+**Cursor priority:**
+
+1. Active panning → `cursor-grabbing`
+2. Shift key held → `cursor-grab`
+3. Current tool → Tool-specific cursor
+
+**Tool cursors:**
+
+- Select: `cursor-select`
+- Frame/Rect/Ellipse/Line/Arrow: `cursor-crosshair`
+- Freedraw: `cursor-pen`
+- Text: `cursor-text`
+- Eraser: `cursor-eraser`
+
 ## Hooks
 
 ### useInfiniteCanvas
@@ -432,16 +506,22 @@ const {
   getDraftShape,
   getFreeDrawPoints,
   setIsSidebarOpen,
+  zoomIn,
+  zoomOut,
+  getSelectionBox,
 } = useInfiniteCanvas();
 ```
 
 **Key features:**
 
 - Handles all pointer events (down/move/up/cancel)
-- Manages keyboard events (Shift for hand tool)
-- Handles resize events
+- Manages keyboard events (Shift for hand tool, Delete/Backspace for deletion)
+- Handles resize events via custom DOM events
 - Provides draft shape and freehand points for rendering
 - Auto-opens sidebar for text selection
+- Selection box for multi-select (drag on empty space)
+- Zoom controls (zoomIn/zoomOut functions)
+- Auto-switches to select tool after drawing (except eraser)
 
 ### useCanvasPersistence
 
@@ -593,15 +673,88 @@ dispatchShapes({ type: "SELECT_ALL" });
 - Optimize shape rendering (use React.memo)
 - Reduce point density for freehand paths
 
+## Canvas Page Structure
+
+The main canvas page (`app/dashboard/[projectId]/canvas/page.tsx`) follows this structure:
+
+```tsx
+<CanvasProvider>
+  <CanvasContent>
+    {/* Fixed UI overlays */}
+    <Toolbar />
+    <ZoomBar />
+    <HistoryPill />
+
+    {/* Canvas container with event handlers */}
+    <div ref={attachCanvasRef} onPointerDown={...} className={cursorClass}>
+      {/* Transformed inner container */}
+      <div style={{ transform: `translate(...) scale(...)` }}>
+        {/* Render all shapes */}
+        {shapes.map((shape) => <ShapeComponent />)}
+
+        {/* Render draft shapes (preview during drawing) */}
+        {draftShape && <ShapePreview />}
+
+        {/* Render freedraw preview */}
+        {freeDrawPoints.length > 0 && <FreeDrawStrokePreview />}
+
+        {/* Render selection box */}
+        {selectionBox && <SelectionBox />}
+
+        {/* Render bounding boxes for selected shapes */}
+        {selectedShapes.map((id) => <BoundingBox />)}
+      </div>
+    </div>
+  </CanvasContent>
+</CanvasProvider>
+```
+
+**Key patterns:**
+
+- Outer div handles pointer events and cursor
+- Inner div applies viewport transform
+- Shapes rendered in z-order (first = bottom, last = top)
+- Draft shapes and UI overlays rendered on top
+- Fixed UI elements use `pointer-events-auto` class
+
+## Shape Components
+
+Shape components are located in `shapes/` directory:
+
+- Each shape type has its own folder (e.g., `shapes/rectangle/`)
+- `index.tsx` - Main shape component
+- `preview.tsx` - Preview component for draft shapes
+
+**Shape component pattern:**
+
+```tsx
+export function Rectangle({ shape }: { shape: RectShape }) {
+  return (
+    <div
+      className="absolute"
+      style={{
+        left: shape.x,
+        top: shape.y,
+        width: shape.w,
+        height: shape.h,
+        border: `${shape.strokeWidth}px solid ${shape.stroke}`,
+        backgroundColor: shape.fill || "transparent",
+      }}
+    />
+  );
+}
+```
+
 ## Future Enhancements
 
-- [ ] Undo/Redo with history tracking
+- [ ] Undo/Redo with history tracking (UI ready, logic TODO)
 - [ ] Collaborative editing via WebSocket
 - [ ] Touch gesture support (pinch-to-zoom)
 - [ ] Grid and shape snapping
-- [ ] Layer management (z-index)
+- [ ] Layer management (z-index controls)
 - [ ] Shape grouping
 - [ ] Copy/paste functionality
-- [ ] Keyboard shortcuts (Delete, Ctrl+A, etc.)
+- [ ] More keyboard shortcuts (Ctrl+A for select all, etc.)
 - [ ] Export to image/SVG
 - [ ] Performance monitoring and metrics
+- [ ] Convex persistence (localStorage working, Convex TODO)

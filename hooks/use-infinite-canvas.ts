@@ -40,6 +40,7 @@ export interface UseInfiniteCanvasReturn {
   setIsSidebarOpen: (open: boolean) => void;
   zoomIn: () => void;
   zoomOut: () => void;
+  getSelectionBox: () => { start: Point; current: Point } | null;
 }
 
 export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
@@ -68,6 +69,10 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
   const isMovingRef = useRef(false);
   const isErasingRef = useRef(false);
   const isResizingRef = useRef(false);
+  const isSelectingRef = useRef(false);
+
+  // Selection box tracking
+  const selectionBoxRef = useRef<{ start: Point; current: Point } | null>(null);
 
   // Movement tracking
   const moveStartRef = useRef<Point | null>(null);
@@ -124,6 +129,18 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
         isSpacePressed.current = true;
         dispatchViewport({ type: "HAND_TOOL_ENABLE" });
       }
+
+      // Delete/Backspace handling
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const target = e.target as HTMLElement;
+        const isInput =
+          target.tagName === "INPUT" || target.tagName === "TEXTAREA";
+
+        if (!isInput && Object.keys(selectedShapes).length > 0) {
+          e.preventDefault();
+          dispatchShapes({ type: "DELETE_SELECTED" });
+        }
+      }
     };
 
     const onKeyUp = (e: KeyboardEvent): void => {
@@ -147,7 +164,7 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
         window.cancelAnimationFrame(panRafRef.current);
       }
     };
-  }, [dispatchViewport]);
+  }, [dispatchViewport, selectedShapes, dispatchShapes]);
 
   // Resize event handlers
   useEffect(() => {
@@ -520,10 +537,13 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
               };
             }
           } else {
-            // Clicked on empty space - clear selection and blur text inputs
+            // Clicked on empty space - start selection box or clear selection
             if (!e.shiftKey) {
               dispatchShapes({ type: "CLEAR_SELECTION" });
               blurActiveTextInput();
+              // Start selection box
+              isSelectingRef.current = true;
+              selectionBoxRef.current = { start: world, current: world };
             }
           }
         } else if (currentTool === "eraser") {
@@ -661,6 +681,11 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
       });
     }
 
+    if (isSelectingRef.current && selectionBoxRef.current) {
+      selectionBoxRef.current.current = world;
+      requestRender();
+    }
+
     if (isDrawingRef.current) {
       if (draftShapeRef.current) {
         draftShapeRef.current.currentWorld = world;
@@ -724,6 +749,12 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
       }
       freeDrawPointsRef.current = [];
     }
+
+    // Auto-switch to select tool after drawing (except for eraser)
+    if (currentTool !== "select" && currentTool !== "eraser") {
+      dispatchShapes({ type: "SET_TOOL", payload: "select" });
+    }
+
     requestRender();
   };
 
@@ -744,6 +775,21 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
     if (isErasingRef.current) {
       isErasingRef.current = false;
       erasedShapesRef.current.clear();
+    }
+
+    if (isSelectingRef.current && selectionBoxRef.current) {
+      const box = selectionBoxRef.current;
+      const selectedIds = shapesList
+        .filter((shape) => intersectsSelectionBox(shape, box))
+        .map((shape) => shape.id);
+
+      selectedIds.forEach((id) => {
+        dispatchShapes({ type: "SELECT_SHAPE", payload: id });
+      });
+
+      isSelectingRef.current = false;
+      selectionBoxRef.current = null;
+      requestRender();
     }
 
     finalizeDrawingIfAny();
@@ -803,6 +849,9 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
     dispatchViewport({ type: "ZOOM_OUT" });
   };
 
+  const getSelectionBox = (): { start: Point; current: Point } | null =>
+    selectionBoxRef.current;
+
   return {
     viewport,
     shapes: shapesList,
@@ -821,5 +870,69 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
     setIsSidebarOpen,
     zoomIn,
     zoomOut,
+    getSelectionBox,
   };
+}
+
+// Helper function to check if shape intersects with selection box
+function intersectsSelectionBox(
+  shape: Shape,
+  box: { start: Point; current: Point }
+): boolean {
+  const boxMinX = Math.min(box.start.x, box.current.x);
+  const boxMaxX = Math.max(box.start.x, box.current.x);
+  const boxMinY = Math.min(box.start.y, box.current.y);
+  const boxMaxY = Math.max(box.start.y, box.current.y);
+
+  // Calculate shape bounds
+  let shapeMinX: number,
+    shapeMaxX: number,
+    shapeMinY: number,
+    shapeMaxY: number;
+
+  switch (shape.type) {
+    case "frame":
+    case "rect":
+    case "ellipse":
+    case "generatedui":
+      shapeMinX = shape.x;
+      shapeMaxX = shape.x + shape.w;
+      shapeMinY = shape.y;
+      shapeMaxY = shape.y + shape.h;
+      break;
+
+    case "text":
+      // Estimate text bounds (rough approximation)
+      shapeMinX = shape.x;
+      shapeMaxX = shape.x + 100; // Approximate width
+      shapeMinY = shape.y - shape.fontSize;
+      shapeMaxY = shape.y + 10;
+      break;
+
+    case "freedraw": {
+      const xs = shape.points.map((p) => p.x);
+      const ys = shape.points.map((p) => p.y);
+      shapeMinX = Math.min(...xs);
+      shapeMaxX = Math.max(...xs);
+      shapeMinY = Math.min(...ys);
+      shapeMaxY = Math.max(...ys);
+      break;
+    }
+
+    case "arrow":
+    case "line":
+      shapeMinX = Math.min(shape.startX, shape.endX);
+      shapeMaxX = Math.max(shape.startX, shape.endX);
+      shapeMinY = Math.min(shape.startY, shape.endY);
+      shapeMaxY = Math.max(shape.startY, shape.endY);
+      break;
+  }
+
+  // Check if rectangles intersect
+  return !(
+    shapeMaxX < boxMinX ||
+    shapeMinX > boxMaxX ||
+    shapeMaxY < boxMinY ||
+    shapeMinY > boxMaxY
+  );
 }

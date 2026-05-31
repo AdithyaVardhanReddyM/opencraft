@@ -2,9 +2,29 @@
 
 import { CanvasProvider } from "@/contexts/CanvasContext";
 import { useInfiniteCanvas } from "@/hooks/use-infinite-canvas";
+import { useCanvasCursor } from "@/hooks/use-canvas-cursor";
 import { Toolbar } from "@/components/canvas/Toolbar";
 import { ZoomBar } from "@/components/canvas/ZoomBar";
 import { HistoryPill } from "@/components/canvas/HistoryPill";
+import { BoundingBox } from "@/components/canvas/BoundingBox";
+import { SelectionBox } from "@/components/canvas/SelectionBox";
+
+// Import shape components
+import { Frame } from "@/shapes/frame";
+import { Rectangle } from "@/shapes/rectangle";
+import { Elipse } from "@/shapes/elipse";
+import { Line } from "@/shapes/line";
+import { Arrow } from "@/shapes/arrow";
+import { Stroke } from "@/shapes/stroke";
+import { Text } from "@/shapes/text";
+
+// Import preview components
+import { FramePreview } from "@/shapes/frame/preview";
+import { RectanglePreview } from "@/shapes/rectangle/preview";
+import { ElipsePreview } from "@/shapes/elipse/preview";
+import { LinePreview } from "@/shapes/line/preview";
+import { ArrowPreview } from "@/shapes/arrow/preview";
+import { FreeDrawStrokePreview } from "@/shapes/stroke/preview";
 
 function CanvasContent() {
   const {
@@ -22,10 +42,14 @@ function CanvasContent() {
     getFreeDrawPoints,
     zoomIn,
     zoomOut,
+    getSelectionBox,
   } = useInfiniteCanvas();
+
+  const { cursorClass } = useCanvasCursor();
 
   const draftShape = getDraftShape();
   const freeDrawPoints = getFreeDrawPoints();
+  const selectionBox = getSelectionBox();
 
   // TODO: Implement undo/redo functionality
   const handleUndo = () => {
@@ -58,230 +82,106 @@ function CanvasContent() {
         canRedo={false}
       />
 
-      {/* Canvas */}
+      {/* Canvas - Outer container for event handling */}
       <div
         ref={attachCanvasRef}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerCancel}
-        className="h-full w-full cursor-crosshair"
+        className={`h-full w-full ${cursorClass} relative overflow-hidden`}
         style={{
           touchAction: "none",
         }}
       >
-        <svg
-          className="h-full w-full"
+        {/* Inner container for transform */}
+        <div
+          className="relative"
           style={{
             transform: `translate(${viewport.translate.x}px, ${viewport.translate.y}px) scale(${viewport.scale})`,
             transformOrigin: "0 0",
+            width: "100%",
+            height: "100%",
           }}
         >
-          {/* Render shapes */}
+          {/* Render shapes using component files */}
           {shapes.map((shape) => {
-            const isSelected = selectedShapes[shape.id];
-
             if (shape.type === "frame") {
-              return (
-                <rect
-                  key={shape.id}
-                  x={shape.x}
-                  y={shape.y}
-                  width={shape.w}
-                  height={shape.h}
-                  fill={shape.fill || "transparent"}
-                  stroke={isSelected ? "#3b82f6" : shape.stroke}
-                  strokeWidth={isSelected ? 3 : shape.strokeWidth}
-                  className="pointer-events-none"
-                />
-              );
+              return <Frame key={shape.id} shape={shape} />;
             }
-
             if (shape.type === "rect") {
-              return (
-                <rect
-                  key={shape.id}
-                  x={shape.x}
-                  y={shape.y}
-                  width={shape.w}
-                  height={shape.h}
-                  fill={shape.fill || "transparent"}
-                  stroke={isSelected ? "#3b82f6" : shape.stroke}
-                  strokeWidth={isSelected ? 3 : shape.strokeWidth}
-                  className="pointer-events-none"
-                />
-              );
+              return <Rectangle key={shape.id} shape={shape} />;
             }
-
             if (shape.type === "ellipse") {
-              return (
-                <ellipse
-                  key={shape.id}
-                  cx={shape.x + shape.w / 2}
-                  cy={shape.y + shape.h / 2}
-                  rx={shape.w / 2}
-                  ry={shape.h / 2}
-                  fill={shape.fill || "transparent"}
-                  stroke={isSelected ? "#3b82f6" : shape.stroke}
-                  strokeWidth={isSelected ? 3 : shape.strokeWidth}
-                  className="pointer-events-none"
-                />
-              );
+              return <Elipse key={shape.id} shape={shape} />;
             }
-
             if (shape.type === "freedraw") {
-              const pathData = shape.points
-                .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
-                .join(" ");
-              return (
-                <path
-                  key={shape.id}
-                  d={pathData}
-                  fill="none"
-                  stroke={isSelected ? "#3b82f6" : shape.stroke}
-                  strokeWidth={isSelected ? 3 : shape.strokeWidth}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="pointer-events-none"
-                />
-              );
+              return <Stroke key={shape.id} shape={shape} />;
             }
-
-            if (shape.type === "arrow" || shape.type === "line") {
-              return (
-                <g key={shape.id}>
-                  <line
-                    x1={shape.startX}
-                    y1={shape.startY}
-                    x2={shape.endX}
-                    y2={shape.endY}
-                    stroke={isSelected ? "#3b82f6" : shape.stroke}
-                    strokeWidth={isSelected ? 3 : shape.strokeWidth}
-                    className="pointer-events-none"
-                  />
-                  {shape.type === "arrow" && (
-                    <polygon
-                      points={`${shape.endX},${shape.endY} ${shape.endX - 10},${
-                        shape.endY - 5
-                      } ${shape.endX - 10},${shape.endY + 5}`}
-                      fill={isSelected ? "#3b82f6" : shape.stroke}
-                      className="pointer-events-none"
-                    />
-                  )}
-                </g>
-              );
+            if (shape.type === "line") {
+              return <Line key={shape.id} shape={shape} />;
             }
-
+            if (shape.type === "arrow") {
+              return <Arrow key={shape.id} shape={shape} />;
+            }
             if (shape.type === "text") {
-              return (
-                <text
-                  key={shape.id}
-                  x={shape.x}
-                  y={shape.y}
-                  fill={shape.fill || "#ffffff"}
-                  fontSize={shape.fontSize}
-                  fontFamily={shape.fontFamily}
-                  fontWeight={shape.fontWeight}
-                  fontStyle={shape.fontStyle}
-                  textAnchor={
-                    shape.textAlign === "center"
-                      ? "middle"
-                      : shape.textAlign === "right"
-                      ? "end"
-                      : "start"
-                  }
-                  className="pointer-events-none"
-                >
-                  {shape.text}
-                </text>
-              );
+              return <Text key={shape.id} shape={shape} />;
             }
-
             if (shape.type === "generatedui") {
               return (
-                <foreignObject
+                <div
                   key={shape.id}
-                  x={shape.x}
-                  y={shape.y}
-                  width={shape.w}
-                  height={shape.h}
-                  className="pointer-events-none"
+                  className="absolute pointer-events-none"
+                  style={{
+                    left: shape.x,
+                    top: shape.y,
+                    width: shape.w,
+                    height: shape.h,
+                  }}
                 >
                   <div
                     className="h-full w-full overflow-hidden border border-gray-200 bg-white"
-                    style={{
-                      border: isSelected ? "3px solid #3b82f6" : "none",
-                    }}
                     dangerouslySetInnerHTML={{
                       __html: shape.uiSpecData || "",
                     }}
                   />
-                </foreignObject>
+                </div>
               );
             }
-
             return null;
           })}
 
-          {/* Render draft shape */}
+          {/* Render draft shapes using preview components */}
           {draftShape && (
             <>
-              {(draftShape.type === "frame" || draftShape.type === "rect") && (
-                <rect
-                  x={Math.min(
-                    draftShape.startWorld.x,
-                    draftShape.currentWorld.x
-                  )}
-                  y={Math.min(
-                    draftShape.startWorld.y,
-                    draftShape.currentWorld.y
-                  )}
-                  width={Math.abs(
-                    draftShape.currentWorld.x - draftShape.startWorld.x
-                  )}
-                  height={Math.abs(
-                    draftShape.currentWorld.y - draftShape.startWorld.y
-                  )}
-                  fill="transparent"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  strokeDasharray="5,5"
-                  className="pointer-events-none"
+              {draftShape.type === "frame" && (
+                <FramePreview
+                  startWorld={draftShape.startWorld}
+                  currentWorld={draftShape.currentWorld}
                 />
               )}
-
+              {draftShape.type === "rect" && (
+                <RectanglePreview
+                  startWorld={draftShape.startWorld}
+                  currentWorld={draftShape.currentWorld}
+                />
+              )}
               {draftShape.type === "ellipse" && (
-                <ellipse
-                  cx={(draftShape.startWorld.x + draftShape.currentWorld.x) / 2}
-                  cy={(draftShape.startWorld.y + draftShape.currentWorld.y) / 2}
-                  rx={
-                    Math.abs(
-                      draftShape.currentWorld.x - draftShape.startWorld.x
-                    ) / 2
-                  }
-                  ry={
-                    Math.abs(
-                      draftShape.currentWorld.y - draftShape.startWorld.y
-                    ) / 2
-                  }
-                  fill="transparent"
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  strokeDasharray="5,5"
-                  className="pointer-events-none"
+                <ElipsePreview
+                  startWorld={draftShape.startWorld}
+                  currentWorld={draftShape.currentWorld}
                 />
               )}
-
-              {(draftShape.type === "arrow" || draftShape.type === "line") && (
-                <line
-                  x1={draftShape.startWorld.x}
-                  y1={draftShape.startWorld.y}
-                  x2={draftShape.currentWorld.x}
-                  y2={draftShape.currentWorld.y}
-                  stroke="#3b82f6"
-                  strokeWidth={2}
-                  strokeDasharray="5,5"
-                  className="pointer-events-none"
+              {draftShape.type === "line" && (
+                <LinePreview
+                  startWorld={draftShape.startWorld}
+                  currentWorld={draftShape.currentWorld}
+                />
+              )}
+              {draftShape.type === "arrow" && (
+                <ArrowPreview
+                  startWorld={draftShape.startWorld}
+                  currentWorld={draftShape.currentWorld}
                 />
               )}
             </>
@@ -289,19 +189,38 @@ function CanvasContent() {
 
           {/* Render freedraw preview */}
           {freeDrawPoints.length > 0 && (
-            <path
-              d={freeDrawPoints
-                .map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`)
-                .join(" ")}
-              fill="none"
-              stroke="#3b82f6"
-              strokeWidth={2}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className="pointer-events-none"
+            <FreeDrawStrokePreview points={freeDrawPoints} />
+          )}
+
+          {/* Render selection box */}
+          {selectionBox && (
+            <SelectionBox
+              startWorld={selectionBox.start}
+              currentWorld={selectionBox.current}
             />
           )}
-        </svg>
+
+          {/* Render bounding boxes for selected shapes */}
+          {Object.keys(selectedShapes).map((id) => {
+            const shape = shapes.find((s) => s.id === id);
+            if (!shape) return null;
+
+            return (
+              <BoundingBox
+                key={`bbox-${id}`}
+                shape={shape}
+                viewport={viewport}
+                onResizeStart={(corner, bounds) => {
+                  window.dispatchEvent(
+                    new CustomEvent("shape-resize-start", {
+                      detail: { shapeId: id, corner, bounds },
+                    })
+                  );
+                }}
+              />
+            );
+          })}
+        </div>
       </div>
     </div>
   );
