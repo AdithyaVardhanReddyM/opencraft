@@ -36,7 +36,7 @@ export function ZoomBar({
     <TooltipProvider delayDuration={150}>
       <div className="pointer-events-auto fixed bottom-4 right-27 z-50">
         <div
-          className="flex items-center gap-0.5 rounded-full border border-border bg-card/90 p-1 backdrop-blur-2xl saturate-150"
+          className="flex items-center gap-0.5 rounded-lg bg-card/90 p-1 backdrop-blur-2xl saturate-150"
           style={{
             boxShadow: "0 4px 16px -4px oklch(0 0 0 / 0.4)",
           }}
@@ -45,7 +45,7 @@ export function ZoomBar({
             onClick={onZoomOut}
             disabled={isAtMin}
             aria-label="Zoom out"
-            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:bg-accent enabled:hover:text-accent-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-md transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:bg-accent enabled:hover:text-accent-foreground"
           >
             <Minus className="h-3.5 w-3.5" />
           </button>
@@ -56,7 +56,7 @@ export function ZoomBar({
                 type="button"
                 onClick={onReset}
                 aria-label="Reset zoom to 100%"
-                className="w-16 rounded-full px-2 py-1 text-center text-xs font-medium text-foreground transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 hover:bg-accent hover:text-accent-foreground"
+                className="w-16 rounded-md px-2 py-1 text-center text-xs font-medium text-foreground transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 hover:bg-accent hover:text-accent-foreground"
               >
                 {percentage}%
               </button>
@@ -70,7 +70,7 @@ export function ZoomBar({
             onClick={onZoomIn}
             disabled={isAtMax}
             aria-label="Zoom in"
-            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:bg-accent enabled:hover:text-accent-foreground"
+            className="flex h-8 w-8 items-center justify-center rounded-md transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:bg-accent enabled:hover:text-accent-foreground"
           >
             <Plus className="h-3.5 w-3.5" />
           </button>
@@ -82,7 +82,7 @@ export function ZoomBar({
               <button
                 onClick={onZoomToFit}
                 aria-label="Zoom to fit"
-                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 enabled:hover:bg-accent enabled:hover:text-accent-foreground"
+                className="flex h-8 w-8 items-center justify-center rounded-md transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 enabled:hover:bg-accent enabled:hover:text-accent-foreground"
               >
                 <Maximize2 className="h-3.5 w-3.5" />
               </button>

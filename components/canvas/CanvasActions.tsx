@@ -15,7 +15,7 @@ export function CanvasActions({ onRemixFromWeb, onShare }: CanvasActionsProps) {
         variant="ghost"
         size="sm"
         onClick={onRemixFromWeb}
-        className="gap-2 px-3 h-9 text-muted-foreground hover:text-foreground bg-card/90 backdrop-blur-2xl saturate-150 border border-border hover:bg-card hover:border-border/80 transition-all duration-200"
+        className="gap-2 px-3 h-9 text-muted-foreground hover:text-foreground bg-card/90 backdrop-blur-2xl saturate-150 hover:bg-card transition-all duration-200"
         style={{
           boxShadow: "0 4px 16px -4px oklch(0 0 0 / 0.4)",
         }}

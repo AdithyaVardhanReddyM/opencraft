@@ -18,6 +18,7 @@ import {
   LayersSidebar,
   LayersSidebarToggle,
 } from "@/components/canvas/LayersSidebar";
+import { AISidebar, AISidebarToggle } from "@/components/canvas/AISidebar";
 import { getShapeCenter } from "@/lib/canvas/layers-sidebar-utils";
 
 // Import shape components
@@ -188,8 +189,9 @@ function CanvasContent({ projectId }: { projectId: string }) {
     [setDefaultProperty]
   );
 
-  // Layers sidebar state
+  // Sidebar states
   const [isLayersSidebarOpen, setIsLayersSidebarOpen] = useState(true);
+  const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
 
   // Handle shape click from sidebar - center viewport and select shape
   const handleSidebarShapeClick = useCallback(
@@ -243,6 +245,12 @@ function CanvasContent({ projectId }: { projectId: string }) {
       className="relative h-screen w-full overflow-hidden bg-accent"
       style={{ overscrollBehavior: "none" }}
     >
+      {/* AI Sidebar */}
+      <AISidebar
+        isOpen={isAISidebarOpen}
+        onClose={() => setIsAISidebarOpen(false)}
+      />
+
       {/* Toolbar */}
       <Toolbar currentTool={activeTool} onToolSelect={selectTool} />
 
@@ -279,9 +287,13 @@ function CanvasContent({ projectId }: { projectId: string }) {
         isOpen={isLayersSidebarOpen}
       />
 
-      {/* Back to Dashboard + Properties Bar */}
+      {/* Back to Dashboard + AI Toggle + Properties Bar */}
       <div className="absolute top-3 left-3 z-50 flex items-center gap-2">
         <BackButton />
+        <AISidebarToggle
+          isOpen={isAISidebarOpen}
+          onToggle={() => setIsAISidebarOpen(!isAISidebarOpen)}
+        />
         <ShapePropertiesBar
           currentTool={activeTool}
           selectedShapes={selectedShapesList}

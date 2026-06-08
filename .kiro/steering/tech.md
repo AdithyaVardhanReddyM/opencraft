@@ -22,6 +22,7 @@
 - **Utilities**: clsx, tailwind-merge, class-variance-authority
 - **Canvas**: Custom infinite canvas with React Context + useReducer
 - **IDs**: nanoid for unique shape identifiers
+- **AI Agents**: Inngest AgentKit with OpenRouter
 
 ## Package Manager
 
@@ -49,6 +50,7 @@ Required environment variables:
 
 - `NEXT_PUBLIC_CONVEX_URL` - Convex backend URL
 - `CLERK_JWT_ISSUER_DOMAIN` - Clerk JWT issuer for Convex auth
+- `OPENROUTER_API_KEY` - OpenRouter API key for AI agents
 
 ## Path Aliases
 

@@ -180,10 +180,10 @@ export function LayersSidebarToggle({
           }}
           aria-label={isOpen ? "Close layers panel" : "Open layers panel"}
           className={cn(
-            "flex h-9 w-9 items-center justify-center rounded-lg border transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
+            "flex h-9 w-9 items-center justify-center rounded-lg transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-primary/20",
             isOpen
-              ? "bg-primary text-primary-foreground border-primary shadow-sm"
-              : "bg-background/80 backdrop-blur-sm border-border/50 hover:bg-accent hover:text-accent-foreground shadow-sm"
+              ? "bg-primary text-primary-foreground shadow-sm shadow-primary/30"
+              : "bg-background/80 backdrop-blur-sm hover:bg-accent hover:text-accent-foreground shadow-sm"
           )}
         >
           <PanelRight className="h-4 w-4" />
@@ -274,9 +274,10 @@ export function LayersSidebar({
         width: "285px",
       }}
     >
-      <div className="flex flex-col h-full rounded-xl border border-border/40 bg-background/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+      <div className="flex flex-col h-full rounded-xl bg-background/95 backdrop-blur-xl shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="flex flex-col gap-3 p-3 border-b border-border/40 bg-muted/5">
+        <div className="relative flex flex-col gap-3 p-3 bg-muted/5">
+          <div className="absolute bottom-0 left-4 right-4 h-px bg-border/40" />
           <div className="flex items-center justify-between px-1">
             <div className="flex items-center gap-2">
               <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
@@ -320,7 +321,8 @@ export function LayersSidebar({
 
         {/* Footer */}
         {shapes.length > 0 && (
-          <div className="px-3 py-2 border-t border-border/40 bg-muted/5">
+          <div className="relative px-3 py-2 bg-muted/5">
+            <div className="absolute top-0 left-4 right-4 h-px bg-border/40" />
             <div className="flex items-center justify-center gap-3 text-[10px] text-muted-foreground/60">
               <div className="flex items-center gap-1">
                 <GripVertical className="h-3 w-3" />

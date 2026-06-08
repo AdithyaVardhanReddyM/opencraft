@@ -177,7 +177,7 @@ export function ShapePropertiesBar({
 
   return (
     <div
-      className="flex items-center gap-1.5 px-1 py-1 bg-card/90 backdrop-blur-2xl saturate-150 border border-border rounded-lg"
+      className="flex items-center gap-1.5 px-1 py-1 bg-card/90 backdrop-blur-2xl saturate-150 rounded-lg"
       style={{
         boxShadow: "0 4px 16px -4px oklch(0 0 0 / 0.4)",
       }}

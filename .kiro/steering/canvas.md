@@ -271,6 +271,7 @@ Each shape type has dedicated components:
 - `SaveIndicator.tsx`: Auto-save status indicator
 - `BackButton.tsx`: Navigation back to dashboard
 - `CanvasActions.tsx`: Canvas action buttons (export, etc.)
+- `ChatSidebar.tsx`: AI chat assistant panel (toggle button + message interface)
 
 ### 10. Property Controls (`components/canvas/property-controls/`)
 

@@ -8,6 +8,11 @@
     /sign-in           - Sign in page with Clerk
     /sign-up           - Sign up page with Clerk
     layout.tsx         - Auth layout (centered, gray background)
+  /api                 - API routes
+    /chat              - Chat API endpoints
+      route.ts         - Send message to AI agent
+      /test            - Test endpoint
+    /inngest           - Inngest webhook handler
   /dashboard           - Dashboard pages
     /[projectId]       - Project-specific pages
       /canvas          - Canvas page for drawing and design
@@ -32,6 +37,10 @@
   auth.config.ts       - Clerk authentication configuration
   projects.ts          - Project queries and mutations
   schema.ts            - Database schema
+
+/inngest               - Inngest background functions
+  client.ts            - Inngest client configuration
+  functions.ts         - Agent functions (chat agent, etc.)
 
 /hooks                 - Custom React hooks
   use-canvas.ts        - Canvas-related hooks (deprecated, use use-infinite-canvas)

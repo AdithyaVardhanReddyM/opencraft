@@ -32,7 +32,7 @@ export function HistoryPill({
   return (
     <div className="pointer-events-auto fixed bottom-4 right-3 z-50">
       <div
-        className="flex items-center gap-2 px-1.5 rounded-full border border-border bg-card/90 p-1 backdrop-blur-2xl saturate-150"
+        className="flex items-center gap-2 px-1.5 rounded-lg bg-card/90 p-1 backdrop-blur-2xl saturate-150"
         style={{
           boxShadow: "0 4px 16px -4px oklch(0 0 0 / 0.4)",
         }}
@@ -45,7 +45,7 @@ export function HistoryPill({
                 disabled={!canUndo}
                 aria-label="Undo"
                 aria-disabled={!canUndo}
-                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:bg-accent enabled:hover:text-accent-foreground"
+                className="flex h-8 w-8 items-center justify-center rounded-md transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:bg-accent enabled:hover:text-accent-foreground"
               >
                 <Undo2 className="h-4 w-4" />
               </button>
@@ -61,7 +61,7 @@ export function HistoryPill({
                 disabled={!canRedo}
                 aria-label="Redo"
                 aria-disabled={!canRedo}
-                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:bg-accent enabled:hover:text-accent-foreground"
+                className="flex h-8 w-8 items-center justify-center rounded-md transition-colors outline-none focus:outline-none focus-visible:outline-none focus-visible:ring-0 focus:ring-0 disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:bg-accent enabled:hover:text-accent-foreground"
               >
                 <Redo2 className="h-4 w-4" />
               </button>

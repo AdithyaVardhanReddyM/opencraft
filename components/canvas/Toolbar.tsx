@@ -50,7 +50,7 @@ export function Toolbar({ currentTool, onToolSelect }: ToolbarProps) {
         style={{
           borderRadius: "0 0 16px 16px",
           boxShadow:
-            "0 8px 32px -4px oklch(0.7114 0.1728 56.6323 / 0.25), 0 12px 24px -8px oklch(0 0 0 / 0.4), inset 0 -1px 0 0 rgba(255,255,255,0.05)",
+            "0 8px 32px -4px oklch(0.7114 0.1728 56.6323 / 0.25), 0 12px 24px -8px oklch(0 0 0 / 0.4)",
         }}
       >
         {TOOLS.map((tool) => {
