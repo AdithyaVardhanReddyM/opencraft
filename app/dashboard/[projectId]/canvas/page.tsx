@@ -36,6 +36,17 @@ import { EllipsePreview } from "@/components/canvas/shapes/EllipsePreview";
 import { LinePreview } from "@/components/canvas/shapes/LinePreview";
 import { ArrowPreview } from "@/components/canvas/shapes/ArrowPreview";
 import { FreeDrawStrokePreview } from "@/components/canvas/shapes/StrokePreview";
+import { ShapePropertiesBar } from "@/components/canvas/ShapePropertiesBar";
+import {
+  strokeWidthToPixels,
+  cornerTypeToRadius,
+  fontFamilyPresetToCSS,
+  type StrokeWidthPreset,
+  type CornerType,
+  type FontFamilyPreset,
+  type TextAlignOption,
+} from "@/lib/canvas/properties-utils";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 function CanvasContent({ projectId }: { projectId: string }) {
   // Autosave hook
@@ -65,8 +76,97 @@ function CanvasContent({ projectId }: { projectId: string }) {
     redo,
   } = useInfiniteCanvas();
 
-  const { dispatchViewport, dispatchShapes } = useCanvasContext();
+  const {
+    dispatchViewport,
+    dispatchShapes,
+    defaultProperties,
+    setDefaultProperty,
+  } = useCanvasContext();
   const { cursorClass } = useCanvasCursor();
+
+  // Get selected shapes as array
+  const selectedShapesList = shapes.filter((s) => selectedShapes[s.id]);
+
+  // Handle property change for selected shapes
+  const handlePropertyChange = useCallback(
+    (property: string, value: unknown) => {
+      const selectedIds = Object.keys(selectedShapes);
+      if (selectedIds.length === 0) return;
+
+      selectedIds.forEach((id) => {
+        const shape = shapes.find((s) => s.id === id);
+        if (!shape) return;
+
+        let patch: Record<string, unknown> = {};
+
+        switch (property) {
+          case "strokeType":
+            if (
+              ["rect", "ellipse", "line", "arrow", "freedraw"].includes(
+                shape.type
+              )
+            ) {
+              patch.strokeType = value;
+            }
+            break;
+          case "strokeWidth":
+            if (["rect", "ellipse"].includes(shape.type)) {
+              patch.strokeWidth = strokeWidthToPixels(
+                value as StrokeWidthPreset
+              );
+            }
+            break;
+          case "strokeColor":
+            if (
+              ["rect", "ellipse", "line", "arrow", "freedraw"].includes(
+                shape.type
+              )
+            ) {
+              patch.stroke = value;
+            }
+            break;
+          case "cornerType":
+            if (shape.type === "rect") {
+              patch.borderRadius = cornerTypeToRadius(value as CornerType);
+            }
+            break;
+          case "fontFamily":
+            if (shape.type === "text") {
+              patch.fontFamily = fontFamilyPresetToCSS(
+                value as FontFamilyPreset
+              );
+            }
+            break;
+          case "textAlign":
+            if (shape.type === "text") {
+              patch.textAlign = value as TextAlignOption;
+            }
+            break;
+          case "textColor":
+            if (shape.type === "text") {
+              patch.stroke = value;
+            }
+            break;
+        }
+
+        if (Object.keys(patch).length > 0) {
+          dispatchShapes({
+            type: "UPDATE_SHAPE",
+            payload: { id, patch },
+          });
+        }
+      });
+    },
+    [selectedShapes, shapes, dispatchShapes]
+  );
+
+  // Handle default property change
+  const handleDefaultChange = useCallback(
+    (property: string, value: unknown) => {
+      setDefaultProperty(property, value);
+    },
+    [setDefaultProperty]
+  );
 
   // Layers sidebar state
   const [isLayersSidebarOpen, setIsLayersSidebarOpen] = useState(true);
@@ -153,9 +253,16 @@ function CanvasContent({ projectId }: { projectId: string }) {
         isOpen={isLayersSidebarOpen}
       />
 
-      {/* Back to Dashboard */}
-      <div className="absolute top-3 left-3 z-50">
+      {/* Back to Dashboard + Properties Bar */}
+      <div className="absolute top-3 left-3 z-50 flex items-center gap-2">
         <BackButton />
+        <ShapePropertiesBar
+          currentTool={activeTool}
+          selectedShapes={selectedShapesList}
+          defaultProperties={defaultProperties}
+          onPropertyChange={handlePropertyChange}
+          onDefaultChange={handleDefaultChange}
+        />
       </div>
 
       {/* Top Right Actions */}
@@ -324,7 +431,9 @@ export default function CanvasPage({ params }: CanvasPageProps) {
 
   return (
     <CanvasProvider>
-      <CanvasContent projectId={projectId} />
+      <TooltipProvider delayDuration={300}>
+        <CanvasContent projectId={projectId} />
+      </TooltipProvider>
     </CanvasProvider>
   );
 }

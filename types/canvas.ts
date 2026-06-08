@@ -74,6 +74,8 @@ export interface RectShape extends BaseShape {
   y: number;
   w: number;
   h: number;
+  strokeType?: "solid" | "dashed";
+  borderRadius?: number;
 }
 
 export interface EllipseShape extends BaseShape {
@@ -82,11 +84,13 @@ export interface EllipseShape extends BaseShape {
   y: number;
   w: number;
   h: number;
+  strokeType?: "solid" | "dashed";
 }
 
 export interface FreeDrawShape extends BaseShape {
   type: "freedraw";
   points: Point[];
+  strokeType?: "solid" | "dashed";
 }
 
 export interface ArrowShape extends BaseShape {
@@ -95,6 +99,7 @@ export interface ArrowShape extends BaseShape {
   startY: number;
   endX: number;
   endY: number;
+  strokeType?: "solid" | "dashed";
 }
 
 export interface LineShape extends BaseShape {
@@ -103,6 +108,7 @@ export interface LineShape extends BaseShape {
   startY: number;
   endX: number;
   endY: number;
+  strokeType?: "solid" | "dashed";
 }
 
 export interface TextShape extends BaseShape {

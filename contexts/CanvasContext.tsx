@@ -1,6 +1,13 @@
 "use client";
 
-import React, { createContext, useContext, useReducer, useMemo } from "react";
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useMemo,
+  useState,
+  useCallback,
+} from "react";
 import type { ViewportState, ShapesState, Shape } from "@/types/canvas";
 import {
   viewportReducer,
@@ -12,6 +19,10 @@ import {
   initialShapesState,
   type ShapesAction,
 } from "@/lib/canvas/shapes-reducer";
+import {
+  type ShapeDefaultProperties,
+  DEFAULT_SHAPE_PROPERTIES,
+} from "@/lib/canvas/properties-utils";
 
 interface CanvasContextValue {
   // Viewport state
@@ -24,6 +35,10 @@ interface CanvasContextValue {
 
   // Computed values
   shapesList: Shape[];
+
+  // Default shape properties
+  defaultProperties: ShapeDefaultProperties;
+  setDefaultProperty: (property: string, value: unknown) => void;
 }
 
 const CanvasContext = createContext<CanvasContextValue | null>(null);
@@ -38,6 +53,18 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
     shapesReducer,
     initialShapesState
   );
+
+  // Default shape properties state
+  const [defaultProperties, setDefaultProperties] =
+    useState<ShapeDefaultProperties>(DEFAULT_SHAPE_PROPERTIES);
+
+  // Update a single default property
+  const setDefaultProperty = useCallback((property: string, value: unknown) => {
+    setDefaultProperties((prev) => ({
+      ...prev,
+      [property]: value,
+    }));
+  }, []);
 
   // Compute shapes list from entity state with safety checks
   const shapesList = useMemo(() => {
@@ -61,6 +88,8 @@ export function CanvasProvider({ children }: { children: React.ReactNode }) {
     shapes,
     dispatchShapes,
     shapesList,
+    defaultProperties,
+    setDefaultProperty,
   };
 
   return (

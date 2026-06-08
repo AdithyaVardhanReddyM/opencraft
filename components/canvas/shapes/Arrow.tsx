@@ -1,15 +1,8 @@
 import { ArrowShape } from "@/types/canvas";
 
 export const Arrow = ({ shape }: { shape: ArrowShape }) => {
-  const length = Math.sqrt(
-    Math.pow(shape.endX - shape.startX, 2) +
-      Math.pow(shape.endY - shape.startY, 2)
-  );
-  const angle = Math.atan2(
-    shape.endY - shape.startY,
-    shape.endX - shape.startX
-  );
   const arrowHeadSize = 10;
+  const isDashed = shape.strokeType === "dashed";
 
   return (
     <svg
@@ -46,6 +39,7 @@ export const Arrow = ({ shape }: { shape: ArrowShape }) => {
         y2={shape.endY - Math.min(shape.startY, shape.endY) + arrowHeadSize}
         stroke={shape.stroke}
         strokeWidth={shape.strokeWidth}
+        strokeDasharray={isDashed ? "8 4" : undefined}
         markerEnd={`url(#arrowhead-${shape.id})`}
       />
     </svg>

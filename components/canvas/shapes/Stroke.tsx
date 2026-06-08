@@ -10,6 +10,8 @@ export const Stroke = ({ shape }: { shape: FreeDrawShape }) => {
     return `${acc} L ${point.x} ${point.y}`;
   }, "");
 
+  const isDashed = shape.strokeType === "dashed";
+
   return (
     <svg
       className="absolute pointer-events-none"
@@ -25,6 +27,7 @@ export const Stroke = ({ shape }: { shape: FreeDrawShape }) => {
         d={pathData}
         stroke={shape.stroke}
         strokeWidth={shape.strokeWidth}
+        strokeDasharray={isDashed ? "8 4" : undefined}
         fill="none"
         strokeLinecap="round"
         strokeLinejoin="round"

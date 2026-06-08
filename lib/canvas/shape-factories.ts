@@ -56,6 +56,8 @@ export function createRect(params: {
   stroke?: string;
   strokeWidth?: number;
   fill?: string | null;
+  strokeType?: "solid" | "dashed";
+  borderRadius?: number;
 }): RectShape {
   return {
     id: nanoid(),
@@ -67,6 +69,8 @@ export function createRect(params: {
     stroke: params.stroke ?? SHAPE_DEFAULTS.stroke,
     strokeWidth: params.strokeWidth ?? SHAPE_DEFAULTS.strokeWidth,
     fill: params.fill ?? null,
+    strokeType: params.strokeType ?? "solid",
+    borderRadius: params.borderRadius ?? 8,
   };
 }
 
@@ -81,6 +85,7 @@ export function createEllipse(params: {
   stroke?: string;
   strokeWidth?: number;
   fill?: string | null;
+  strokeType?: "solid" | "dashed";
 }): EllipseShape {
   return {
     id: nanoid(),
@@ -92,6 +97,7 @@ export function createEllipse(params: {
     stroke: params.stroke ?? SHAPE_DEFAULTS.stroke,
     strokeWidth: params.strokeWidth ?? SHAPE_DEFAULTS.strokeWidth,
     fill: params.fill ?? null,
+    strokeType: params.strokeType ?? "solid",
   };
 }
 
@@ -103,6 +109,7 @@ export function createFreeDraw(params: {
   stroke?: string;
   strokeWidth?: number;
   fill?: string | null;
+  strokeType?: "solid" | "dashed";
 }): FreeDrawShape {
   return {
     id: nanoid(),
@@ -111,6 +118,7 @@ export function createFreeDraw(params: {
     stroke: params.stroke ?? SHAPE_DEFAULTS.stroke,
     strokeWidth: params.strokeWidth ?? SHAPE_DEFAULTS.strokeWidth,
     fill: params.fill ?? null,
+    strokeType: params.strokeType ?? "solid",
   };
 }
 
@@ -125,6 +133,7 @@ export function createArrow(params: {
   stroke?: string;
   strokeWidth?: number;
   fill?: string | null;
+  strokeType?: "solid" | "dashed";
 }): ArrowShape {
   return {
     id: nanoid(),
@@ -136,6 +145,7 @@ export function createArrow(params: {
     stroke: params.stroke ?? SHAPE_DEFAULTS.stroke,
     strokeWidth: params.strokeWidth ?? SHAPE_DEFAULTS.strokeWidth,
     fill: params.fill ?? null,
+    strokeType: params.strokeType ?? "solid",
   };
 }
 
@@ -150,6 +160,7 @@ export function createLine(params: {
   stroke?: string;
   strokeWidth?: number;
   fill?: string | null;
+  strokeType?: "solid" | "dashed";
 }): LineShape {
   return {
     id: nanoid(),
@@ -161,6 +172,7 @@ export function createLine(params: {
     stroke: params.stroke ?? SHAPE_DEFAULTS.stroke,
     strokeWidth: params.strokeWidth ?? SHAPE_DEFAULTS.strokeWidth,
     fill: params.fill ?? null,
+    strokeType: params.strokeType ?? "solid",
   };
 }
 

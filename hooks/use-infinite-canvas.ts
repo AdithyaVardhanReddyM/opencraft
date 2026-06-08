@@ -20,6 +20,10 @@ import {
   canUndo as checkCanUndo,
   canRedo as checkCanRedo,
 } from "@/lib/canvas/history-manager";
+import {
+  strokeWidthToPixels,
+  cornerTypeToRadius,
+} from "@/lib/canvas/properties-utils";
 
 const RAF_INTERVAL_MS = 8;
 
@@ -82,6 +86,7 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
     shapes: shapesState,
     dispatchShapes,
     shapesList,
+    defaultProperties,
   } = useCanvasContext();
 
   // Local state
@@ -1040,9 +1045,32 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
         if (draft.type === "frame") {
           dispatchShapes({ type: "ADD_FRAME", payload: { x, y, w, h } });
         } else if (draft.type === "rect") {
-          dispatchShapes({ type: "ADD_RECT", payload: { x, y, w, h } });
+          dispatchShapes({
+            type: "ADD_RECT",
+            payload: {
+              x,
+              y,
+              w,
+              h,
+              stroke: defaultProperties.strokeColor,
+              strokeWidth: strokeWidthToPixels(defaultProperties.strokeWidth),
+              strokeType: defaultProperties.strokeType,
+              borderRadius: cornerTypeToRadius(defaultProperties.cornerType),
+            },
+          });
         } else if (draft.type === "ellipse") {
-          dispatchShapes({ type: "ADD_ELLIPSE", payload: { x, y, w, h } });
+          dispatchShapes({
+            type: "ADD_ELLIPSE",
+            payload: {
+              x,
+              y,
+              w,
+              h,
+              stroke: defaultProperties.strokeColor,
+              strokeWidth: strokeWidthToPixels(defaultProperties.strokeWidth),
+              strokeType: defaultProperties.strokeType,
+            },
+          });
         } else if (draft.type === "arrow") {
           dispatchShapes({
             type: "ADD_ARROW",
@@ -1051,6 +1079,8 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
               startY: draft.startWorld.y,
               endX: draft.currentWorld.x,
               endY: draft.currentWorld.y,
+              stroke: defaultProperties.strokeColor,
+              strokeType: defaultProperties.strokeType,
             },
           });
         } else if (draft.type === "line") {
@@ -1061,6 +1091,8 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
               startY: draft.startWorld.y,
               endX: draft.currentWorld.x,
               endY: draft.currentWorld.y,
+              stroke: defaultProperties.strokeColor,
+              strokeType: defaultProperties.strokeType,
             },
           });
         }
@@ -1069,7 +1101,14 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
     } else if (currentTool === "freedraw") {
       const pts = freeDrawPointsRef.current;
       if (pts.length > 1) {
-        dispatchShapes({ type: "ADD_FREEDRAW", payload: { points: pts } });
+        dispatchShapes({
+          type: "ADD_FREEDRAW",
+          payload: {
+            points: pts,
+            stroke: defaultProperties.strokeColor,
+            strokeType: defaultProperties.strokeType,
+          },
+        });
       }
       freeDrawPointsRef.current = [];
     }

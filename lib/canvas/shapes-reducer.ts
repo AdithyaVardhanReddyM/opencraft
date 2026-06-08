@@ -47,20 +47,61 @@ type ShapesActionCore =
     }
   | {
       type: "ADD_RECT";
-      payload: { x: number; y: number; w: number; h: number };
+      payload: {
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+        stroke?: string;
+        strokeWidth?: number;
+        strokeType?: "solid" | "dashed";
+        borderRadius?: number;
+      };
     }
   | {
       type: "ADD_ELLIPSE";
-      payload: { x: number; y: number; w: number; h: number };
+      payload: {
+        x: number;
+        y: number;
+        w: number;
+        h: number;
+        stroke?: string;
+        strokeWidth?: number;
+        strokeType?: "solid" | "dashed";
+      };
     }
-  | { type: "ADD_FREEDRAW"; payload: { points: Point[] } }
+  | {
+      type: "ADD_FREEDRAW";
+      payload: {
+        points: Point[];
+        stroke?: string;
+        strokeWidth?: number;
+        strokeType?: "solid" | "dashed";
+      };
+    }
   | {
       type: "ADD_ARROW";
-      payload: { startX: number; startY: number; endX: number; endY: number };
+      payload: {
+        startX: number;
+        startY: number;
+        endX: number;
+        endY: number;
+        stroke?: string;
+        strokeWidth?: number;
+        strokeType?: "solid" | "dashed";
+      };
     }
   | {
       type: "ADD_LINE";
-      payload: { startX: number; startY: number; endX: number; endY: number };
+      payload: {
+        startX: number;
+        startY: number;
+        endX: number;
+        endY: number;
+        stroke?: string;
+        strokeWidth?: number;
+        strokeType?: "solid" | "dashed";
+      };
     }
   | { type: "ADD_TEXT"; payload: { x: number; y: number } }
   | {
