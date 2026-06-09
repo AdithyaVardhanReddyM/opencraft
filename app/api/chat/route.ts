@@ -5,7 +5,8 @@ import { z } from "zod";
 
 const schema = z.object({
   message: z.string().min(1),
-  threadId: z.string().nullable().optional(),
+  screenId: z.string(), // Required: Convex screen ID
+  projectId: z.string(), // Required: Convex project ID
 });
 
 export async function POST(req: NextRequest) {
@@ -28,22 +29,22 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { message, threadId } = result.data;
-    const newThreadId = threadId || `thread-${Date.now()}-${userId}`;
+    const { message, screenId, projectId } = result.data;
 
-    // Send event to Inngest
+    // Send event to Inngest with screenId and projectId
     const { ids } = await inngest.send({
       name: "chat/message.sent",
       data: {
         message,
-        threadId: newThreadId,
+        screenId,
+        projectId,
         userId,
       },
     });
 
     return NextResponse.json({
       success: true,
-      threadId: newThreadId,
+      screenId,
       eventId: ids[0],
     });
   } catch (error) {

@@ -8,6 +8,7 @@ import type {
   LineShape,
   TextShape,
   GeneratedUIShape,
+  ScreenShape,
   Point,
 } from "@/types/canvas";
 import { measureTextDimensions, TEXT_PLACEHOLDER } from "./text-utils";
@@ -263,6 +264,42 @@ export function createGeneratedUI(params: {
     uiSpecData: params.uiSpecData,
     sourceFrameId: params.sourceFrameId,
     isWorkflowPage: params.isWorkflowPage,
+    stroke: "transparent",
+    strokeWidth: 0,
+    fill: params.fill ?? null,
+  };
+}
+
+// Screen shape default dimensions
+export const SCREEN_DEFAULTS = {
+  width: 1440,
+  height: 1024,
+  minWidth: 320,
+  minHeight: 240,
+} as const;
+
+/**
+ * Create a screen shape for displaying AI-generated web content
+ */
+export function createScreen(params: {
+  x: number;
+  y: number;
+  w?: number;
+  h?: number;
+  screenId: string; // Convex document ID
+  id?: string;
+  stroke?: string;
+  strokeWidth?: number;
+  fill?: string | null;
+}): ScreenShape {
+  return {
+    id: params.id ?? nanoid(),
+    type: "screen",
+    x: params.x,
+    y: params.y,
+    w: params.w ?? SCREEN_DEFAULTS.width,
+    h: params.h ?? SCREEN_DEFAULTS.height,
+    screenId: params.screenId,
     stroke: "transparent",
     strokeWidth: 0,
     fill: params.fill ?? null,

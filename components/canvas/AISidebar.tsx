@@ -11,6 +11,8 @@ import {
   Code2,
   Pencil,
   PanelLeftClose,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -28,6 +30,13 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  isError?: boolean;
+}
+
+interface ErrorState {
+  message: string;
+  originalMessage: string;
+  canRetry: boolean;
 }
 
 // Toggle button component
@@ -81,15 +90,20 @@ export function AISidebarToggle({
 export function AISidebar({
   isOpen,
   onClose,
+  selectedScreenId,
+  projectId,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  selectedScreenId?: string;
+  projectId?: string;
 }) {
   const [activeTab, setActiveTab] = useState("chat");
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [threadId, setThreadId] = useState<string | null>(null);
+  const [error, setError] = useState<ErrorState | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -114,56 +128,115 @@ export function AISidebar({
     e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
   };
 
-  const sendMessage = useCallback(async () => {
-    if (!input.trim() || isLoading) return;
+  const sendMessage = useCallback(
+    async (messageContent?: string) => {
+      const content = messageContent || input.trim();
+      if (!content || isLoading) return;
 
-    const userMessage: Message = {
-      id: `msg-${Date.now()}`,
-      role: "user",
-      content: input.trim(),
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    if (inputRef.current) {
-      inputRef.current.style.height = "auto";
-    }
-    setIsLoading(true);
-
-    try {
-      const response = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          message: userMessage.content,
-          threadId,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to send message");
+      // Validate required fields
+      if (!selectedScreenId || !projectId) {
+        setError({
+          message: "Please select a screen to chat with AI",
+          originalMessage: content,
+          canRetry: false,
+        });
+        return;
       }
-      setThreadId(data.threadId);
 
-      await pollForResponse(data.eventId, userMessage.content);
-    } catch (error) {
-      console.error("Chat error:", error);
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `msg-${Date.now()}`,
-          role: "assistant",
-          content: "Sorry, something went wrong. Please try again.",
-          timestamp: new Date(),
-        },
-      ]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [input, isLoading, threadId]);
+      // Clear any previous error state
+      setError(null);
+
+      const userMessage: Message = {
+        id: `msg-${Date.now()}`,
+        role: "user",
+        content: content,
+        timestamp: new Date(),
+      };
+
+      // Only add user message if it's not a retry (retry uses existing message)
+      if (!messageContent) {
+        setMessages((prev) => [...prev, userMessage]);
+        setInput("");
+        if (inputRef.current) {
+          inputRef.current.style.height = "auto";
+        }
+      }
+      setIsLoading(true);
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: content,
+            threadId,
+            screenId: selectedScreenId,
+            projectId,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          const errorMessage = data.error || "Failed to send message";
+          throw new Error(errorMessage);
+        }
+        setThreadId(data.threadId);
+
+        await pollForResponse(data.eventId, content);
+      } catch (err) {
+        console.error("Chat error:", err);
+        const errorMessage =
+          err instanceof Error ? err.message : "An unexpected error occurred";
+
+        // Set error state for retry functionality
+        setError({
+          message: errorMessage,
+          originalMessage: content,
+          canRetry: true,
+        });
+
+        // Add error message to chat
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `msg-${Date.now()}`,
+            role: "assistant",
+            content: errorMessage,
+            timestamp: new Date(),
+            isError: true,
+          },
+        ]);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [input, isLoading, threadId, selectedScreenId, projectId]
+  );
+
+  // Retry the last failed message
+  const retryLastMessage = useCallback(() => {
+    if (!error?.canRetry || !error.originalMessage) return;
+
+    // Remove the last error message from the chat
+    setMessages((prev) => {
+      const lastMessage = prev[prev.length - 1];
+      if (lastMessage?.isError) {
+        return prev.slice(0, -1);
+      }
+      return prev;
+    });
+
+    // Retry sending the message
+    sendMessage(error.originalMessage);
+  }, [error, sendMessage]);
+
+  // Clear messages when screen changes
+  useEffect(() => {
+    setMessages([]);
+    setThreadId(null);
+    setError(null);
+  }, [selectedScreenId]);
 
   const pollForResponse = async (eventId: string, originalMessage: string) => {
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -238,13 +311,16 @@ export function AISidebar({
             {/* Messages */}
             <ScrollArea className="flex-1 px-3 py-3" ref={scrollRef}>
               {messages.length === 0 ? (
-                <EmptyChat />
+                <EmptyChat hasScreen={!!selectedScreenId} />
               ) : (
                 <div className="space-y-4">
                   {messages.map((msg) => (
                     <ChatMessage key={msg.id} message={msg} />
                   ))}
                   {isLoading && <ThinkingIndicator />}
+                  {error?.canRetry && !isLoading && (
+                    <ErrorRetryButton onRetry={retryLastMessage} />
+                  )}
                 </div>
               )}
             </ScrollArea>
@@ -290,11 +366,29 @@ export function AISidebar({
 }
 
 // Empty chat state
-function EmptyChat() {
+function EmptyChat({ hasScreen }: { hasScreen: boolean }) {
+  if (!hasScreen) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-12 px-4">
+        <div className="relative mb-4">
+          <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center border border-border/40">
+            <MessageSquare className="h-8 w-8 text-muted-foreground/60" />
+          </div>
+        </div>
+        <h3 className="text-sm font-medium text-foreground mb-1">
+          Select a screen
+        </h3>
+        <p className="text-xs text-muted-foreground text-center max-w-[200px]">
+          Select a screen on the canvas to start chatting with AI about it
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center justify-center h-full py-12 px-4">
       <div className="relative mb-4">
-        <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
+        <div className="h-16 w-16 rounded-2xl bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20">
           <Sparkles className="h-8 w-8 text-primary" />
         </div>
         <div className="absolute -inset-2 bg-primary/10 rounded-3xl blur-xl -z-10" />
@@ -325,14 +419,26 @@ function EmptyChat() {
 // Chat message component
 function ChatMessage({ message }: { message: Message }) {
   const isUser = message.role === "user";
+  const isError = message.isError;
 
   return (
     <div
       className={cn("flex gap-2.5", isUser ? "justify-end" : "justify-start")}
     >
       {!isUser && (
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/20">
-          <Bot className="h-4 w-4 text-primary" />
+        <div
+          className={cn(
+            "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border",
+            isError
+              ? "bg-destructive/10 border-destructive/20"
+              : "bg-linear-to-br from-primary/20 to-primary/5 border-primary/20"
+          )}
+        >
+          {isError ? (
+            <AlertCircle className="h-4 w-4 text-destructive" />
+          ) : (
+            <Bot className="h-4 w-4 text-primary" />
+          )}
         </div>
       )}
       <div
@@ -340,6 +446,8 @@ function ChatMessage({ message }: { message: Message }) {
           "max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm leading-relaxed",
           isUser
             ? "bg-primary text-primary-foreground rounded-br-sm"
+            : isError
+            ? "bg-destructive/10 border border-destructive/20 text-destructive rounded-bl-sm"
             : "bg-muted/60 border border-border/40 rounded-bl-sm"
         )}
       >
@@ -369,6 +477,23 @@ function ThinkingIndicator() {
         </div>
         <span className="text-xs text-muted-foreground">Thinking...</span>
       </div>
+    </div>
+  );
+}
+
+// Error retry button component
+function ErrorRetryButton({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div className="flex justify-center">
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={onRetry}
+        className="gap-2 text-xs border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50 text-destructive hover:text-destructive"
+      >
+        <RefreshCw className="h-3 w-3" />
+        Retry
+      </Button>
     </div>
   );
 }

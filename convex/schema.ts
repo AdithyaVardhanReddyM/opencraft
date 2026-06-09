@@ -24,4 +24,25 @@ export default defineSchema({
     selectedIds: v.optional(v.any()), // Selection state
     tool: v.optional(v.string()), // Current tool
   }).index("by_userId", ["userId"]),
+
+  // Screen shapes for AI-generated web content
+  screens: defineTable({
+    shapeId: v.string(), // Canvas shape ID (nanoid)
+    projectId: v.id("projects"), // Parent project reference
+    title: v.optional(v.string()), // Screen title (from AI summary)
+    sandboxUrl: v.optional(v.string()), // E2B sandbox URL for iframe
+    files: v.optional(v.any()), // Generated files JSON: { [path: string]: string }
+    createdAt: v.number(), // Creation timestamp
+    updatedAt: v.number(), // Last update timestamp
+  })
+    .index("by_shapeId", ["shapeId"])
+    .index("by_projectId", ["projectId"]),
+
+  // Chat messages for screen threads
+  messages: defineTable({
+    screenId: v.id("screens"), // Parent screen reference
+    role: v.union(v.literal("user"), v.literal("assistant")), // Message sender
+    content: v.string(), // Message content
+    createdAt: v.number(), // Creation timestamp
+  }).index("by_screenId", ["screenId"]),
 });

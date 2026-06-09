@@ -31,6 +31,7 @@ const TOOL_HOTKEYS: Record<string, Tool> = {
   s: "select",
   h: "hand",
   f: "frame",
+  w: "screen",
   r: "rect",
   c: "ellipse",
   l: "line",
@@ -555,6 +556,22 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
             },
           },
         });
+      } else if (shape.type === "screen") {
+        // Screen shapes have minimum size constraints (320x240)
+        const SCREEN_MIN_WIDTH = 320;
+        const SCREEN_MIN_HEIGHT = 240;
+        dispatchInteractionUpdate({
+          type: "UPDATE_SHAPE",
+          payload: {
+            id: shapeId,
+            patch: {
+              x: newBounds.x,
+              y: newBounds.y,
+              w: Math.max(SCREEN_MIN_WIDTH, newBounds.w),
+              h: Math.max(SCREEN_MIN_HEIGHT, newBounds.h),
+            },
+          },
+        });
       } else if (shape.type === "freedraw") {
         const xs = shape.points.map((p) => p.x);
         const ys = shape.points.map((p) => p.y);
@@ -806,6 +823,11 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
               dispatchShapes({ type: "SELECT_SHAPE", payload: hitShape.id });
             }
 
+            // Open sidebar when clicking on a screen shape
+            if (hitShape.type === "screen") {
+              setIsSidebarOpen(true);
+            }
+
             isMovingRef.current = true;
             moveStartRef.current = world;
             startHistoryBatch();
@@ -826,7 +848,8 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
                   shape.type === "frame" ||
                   shape.type === "rect" ||
                   shape.type === "ellipse" ||
-                  shape.type === "generatedui"
+                  shape.type === "generatedui" ||
+                  shape.type === "screen"
                 ) {
                   initialShapePositionsRef.current[id] = {
                     x: shape.x,
@@ -867,6 +890,7 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
           startHistoryBatch();
           const hitShape = getShapeAtPoint(world, shapesList, {
             allowBoundsFallback: false,
+            excludeScreenShapes: true, // Eraser cannot erase screen shapes
           });
           if (hitShape) {
             dispatchInteractionUpdate({
@@ -882,6 +906,15 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
             type: "ADD_TEXT",
             payload: { x: world.x, y: world.y },
           });
+          dispatchShapes({ type: "SET_TOOL", payload: "select" });
+        } else if (currentTool === "screen") {
+          // Screen tool - dispatch custom event for canvas page to handle
+          // (needs Convex integration to create screen record first)
+          window.dispatchEvent(
+            new CustomEvent("screen-tool-click", {
+              detail: { x: world.x, y: world.y },
+            })
+          );
           dispatchShapes({ type: "SET_TOOL", payload: "select" });
         } else {
           isDrawingRef.current = true;
@@ -924,6 +957,7 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
     if (isErasingRef.current && currentTool === "eraser") {
       const hitShape = getShapeAtPoint(world, shapesList, {
         allowBoundsFallback: false,
+        excludeScreenShapes: true, // Eraser cannot erase screen shapes
       });
       if (hitShape && !erasedShapesRef.current.has(hitShape.id)) {
         dispatchInteractionUpdate({
@@ -951,7 +985,8 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
             shape.type === "rect" ||
             shape.type === "ellipse" ||
             shape.type === "generatedui" ||
-            shape.type === "text"
+            shape.type === "text" ||
+            shape.type === "screen"
           ) {
             if (
               typeof initialPos.x === "number" &&
@@ -1329,6 +1364,7 @@ function intersectsSelectionBox(
     case "rect":
     case "ellipse":
     case "generatedui":
+    case "screen":
       shapeMinX = shape.x;
       shapeMaxX = shape.x + shape.w;
       shapeMinY = shape.y;
@@ -1411,6 +1447,7 @@ function getShapeBounds(shape: Shape): Rect | null {
     case "rect":
     case "ellipse":
     case "generatedui":
+    case "screen":
       return {
         x: shape.x,
         y: shape.y,

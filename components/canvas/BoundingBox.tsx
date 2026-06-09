@@ -29,6 +29,7 @@ function calculateBounds(shape: Shape): Bounds {
         h: shape.h + 8,
       };
     case "generatedui":
+    case "screen":
       return { x: shape.x, y: shape.y, w: shape.w, h: shape.h };
 
     case "text": {

@@ -1,7 +1,11 @@
 "use client";
 
-import { use, useState, useCallback } from "react";
+import { use, useState, useCallback, useEffect } from "react";
 import { Loader2 } from "lucide-react";
+import { useMutation, useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
+import { SCREEN_DEFAULTS } from "@/lib/canvas/shape-factories";
 import { CanvasProvider, useCanvasContext } from "@/contexts/CanvasContext";
 import { BackButton } from "@/components/canvas/BackButton";
 import { CanvasActions } from "@/components/canvas/CanvasActions";
@@ -29,6 +33,8 @@ import { Line } from "@/components/canvas/shapes/Line";
 import { Arrow } from "@/components/canvas/shapes/Arrow";
 import { Stroke } from "@/components/canvas/shapes/Stroke";
 import { Text } from "@/components/canvas/shapes/Text";
+import { Screen } from "@/components/canvas/shapes/Screen";
+import { DeleteScreenModal } from "@/components/canvas/DeleteScreenModal";
 
 // Import preview components
 import { FramePreview } from "@/components/canvas/shapes/FramePreview";
@@ -193,6 +199,144 @@ function CanvasContent({ projectId }: { projectId: string }) {
   const [isLayersSidebarOpen, setIsLayersSidebarOpen] = useState(true);
   const [isAISidebarOpen, setIsAISidebarOpen] = useState(false);
 
+  // Delete screen modal state
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [screenToDelete, setScreenToDelete] = useState<{
+    shapeId: string;
+    screenId: Id<"screens"> | null;
+    title?: string;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  // Convex mutations and queries
+  const deleteScreenMutation = useMutation(api.screens.deleteScreen);
+  const createScreenMutation = useMutation(api.screens.createScreen);
+
+  // Query all screens for this project to get their data (sandboxUrl, title, etc.)
+  const screensData = useQuery(api.screens.getScreensByProject, {
+    projectId: projectId as Id<"projects">,
+  });
+
+  // Create a map of shapeId -> screen data for quick lookup
+  const screenDataMap = new Map(
+    (screensData ?? []).map((screen) => [
+      screen.shapeId,
+      {
+        _id: screen._id,
+        sandboxUrl: screen.sandboxUrl,
+        title: screen.title,
+      },
+    ])
+  );
+
+  // Handle screen tool click - create screen in Convex and add to canvas
+  useEffect(() => {
+    const handleScreenToolClick = async (e: Event) => {
+      const customEvent = e as CustomEvent<{ x: number; y: number }>;
+      const { x, y } = customEvent.detail;
+
+      try {
+        // Generate a unique shape ID first using nanoid
+        const { nanoid } = await import("nanoid");
+        const shapeId = nanoid();
+
+        // Create screen record in Convex with the shapeId
+        const convexScreenId = await createScreenMutation({
+          shapeId: shapeId,
+          projectId: projectId as Id<"projects">,
+        });
+
+        // Add the screen shape to the canvas
+        // The shape factory will use the provided id instead of generating a new one
+        dispatchShapes({
+          type: "ADD_SCREEN",
+          payload: {
+            x,
+            y,
+            w: SCREEN_DEFAULTS.width,
+            h: SCREEN_DEFAULTS.height,
+            screenId: convexScreenId, // Convex document ID for linking
+            id: shapeId, // Use the same shapeId we registered in Convex
+          },
+        });
+
+        // Open the AI sidebar for the new screen
+        setIsAISidebarOpen(true);
+      } catch (error) {
+        console.error("Failed to create screen:", error);
+      }
+    };
+
+    window.addEventListener("screen-tool-click", handleScreenToolClick);
+    return () =>
+      window.removeEventListener("screen-tool-click", handleScreenToolClick);
+  }, [createScreenMutation, projectId, dispatchShapes]);
+
+  // Handle delete key for screen shapes - show confirmation modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const target = e.target as HTMLElement;
+        const isInput =
+          target.tagName === "INPUT" || target.tagName === "TEXTAREA";
+        if (isInput) return;
+
+        // Check if any selected shape is a screen
+        const selectedIds = Object.keys(selectedShapes);
+        const selectedScreens = selectedIds
+          .map((id) => shapes.find((s) => s.id === id))
+          .filter((s) => s?.type === "screen");
+
+        if (selectedScreens.length > 0) {
+          e.preventDefault();
+          e.stopPropagation();
+          const screenShape = selectedScreens[0];
+          if (screenShape && screenShape.type === "screen") {
+            // Get the Convex screen ID from the screen data map
+            const screenData = screenDataMap.get(screenShape.id);
+            setScreenToDelete({
+              shapeId: screenShape.id,
+              screenId: screenData?._id ?? null,
+              title: screenData?.title || "Screen",
+            });
+            setDeleteModalOpen(true);
+          }
+        }
+      }
+    };
+
+    // Use capture phase to intercept before the canvas hook
+    document.addEventListener("keydown", handleKeyDown, true);
+    return () => document.removeEventListener("keydown", handleKeyDown, true);
+  }, [selectedShapes, shapes, screenDataMap]);
+
+  // Handle delete confirmation
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!screenToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      // Delete from canvas
+      dispatchShapes({ type: "REMOVE_SHAPE", payload: screenToDelete.shapeId });
+
+      // Delete from Convex if we have a screenId
+      if (screenToDelete.screenId) {
+        await deleteScreenMutation({ screenId: screenToDelete.screenId });
+      }
+    } catch (error) {
+      console.error("Failed to delete screen:", error);
+    } finally {
+      setIsDeleting(false);
+      setDeleteModalOpen(false);
+      setScreenToDelete(null);
+    }
+  }, [screenToDelete, dispatchShapes, deleteScreenMutation]);
+
+  const handleDeleteCancel = useCallback(() => {
+    setDeleteModalOpen(false);
+    setScreenToDelete(null);
+  }, []);
+
   // Handle shape click from sidebar - center viewport and select shape
   const handleSidebarShapeClick = useCallback(
     (shapeId: string) => {
@@ -245,10 +389,29 @@ function CanvasContent({ projectId }: { projectId: string }) {
       className="relative h-screen w-full overflow-hidden bg-accent"
       style={{ overscrollBehavior: "none" }}
     >
+      {/* Delete Screen Confirmation Modal */}
+      <DeleteScreenModal
+        isOpen={deleteModalOpen}
+        onConfirm={handleDeleteConfirm}
+        onCancel={handleDeleteCancel}
+        screenTitle={screenToDelete?.title}
+        isDeleting={isDeleting}
+      />
+
       {/* AI Sidebar */}
       <AISidebar
         isOpen={isAISidebarOpen}
         onClose={() => setIsAISidebarOpen(false)}
+        selectedScreenId={(() => {
+          // Find the selected screen shape and get its Convex screen ID
+          const selectedScreen = selectedShapesList.find(
+            (s) => s.type === "screen"
+          );
+          if (!selectedScreen) return undefined;
+          const screenData = screenDataMap.get(selectedScreen.id);
+          return screenData?._id;
+        })()}
+        projectId={projectId}
       />
 
       {/* Toolbar */}
@@ -379,6 +542,24 @@ function CanvasContent({ projectId }: { projectId: string }) {
                     }}
                   />
                 </div>
+              );
+            }
+            if (shape.type === "screen") {
+              const isSelected = !!selectedShapes[shape.id];
+              // Get screen data from Convex (sandboxUrl, title) for iframe rendering
+              const screenData = screenDataMap.get(shape.id);
+              return (
+                <Screen
+                  key={shape.id}
+                  shape={shape}
+                  isSelected={isSelected}
+                  screenData={screenData}
+                  onClick={() => {
+                    dispatchShapes({ type: "CLEAR_SELECTION" });
+                    dispatchShapes({ type: "SELECT_SHAPE", payload: shape.id });
+                    setIsAISidebarOpen(true);
+                  }}
+                />
               );
             }
             return null;

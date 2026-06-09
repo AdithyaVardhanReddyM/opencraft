@@ -37,7 +37,8 @@ export type Tool =
   | "arrow"
   | "line"
   | "text"
-  | "eraser";
+  | "eraser"
+  | "screen";
 
 export type ResizeHandle =
   | "nw"
@@ -141,6 +142,15 @@ export interface GeneratedUIShape extends BaseShape {
   isWorkflowPage?: boolean;
 }
 
+export interface ScreenShape extends BaseShape {
+  type: "screen";
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+  screenId: string; // Convex document ID reference
+}
+
 export type Shape =
   | FrameShape
   | RectShape
@@ -149,7 +159,8 @@ export type Shape =
   | ArrowShape
   | LineShape
   | TextShape
-  | GeneratedUIShape;
+  | GeneratedUIShape
+  | ScreenShape;
 
 // Entity state (normalized data structure)
 export interface EntityState<T> {

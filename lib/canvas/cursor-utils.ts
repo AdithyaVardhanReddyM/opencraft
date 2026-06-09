@@ -23,6 +23,7 @@ export const TOOL_CURSOR_MAP: Record<Tool, CursorClass> = {
   line: "cursor-crosshair",
   text: "cursor-text",
   eraser: "cursor-eraser",
+  screen: "cursor-crosshair",
 };
 
 /**

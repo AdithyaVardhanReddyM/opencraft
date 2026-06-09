@@ -22,6 +22,7 @@ import {
   createLine,
   createText,
   createGeneratedUI,
+  createScreen,
 } from "./shape-factories";
 import {
   createHistoryEntry,
@@ -113,6 +114,17 @@ type ShapesActionCore =
         h: number;
         uiSpecData: string | null;
         sourceFrameId: string;
+      };
+    }
+  | {
+      type: "ADD_SCREEN";
+      payload: {
+        x: number;
+        y: number;
+        w?: number;
+        h?: number;
+        screenId: string;
+        id?: string; // Optional: use specific shape ID (for Convex linking)
       };
     }
   | { type: "UPDATE_SHAPE"; payload: { id: string; patch: Partial<Shape> } }
@@ -294,6 +306,21 @@ export function shapesReducer(
       return applyStateChange(state, action, (current) => ({
         ...current,
         shapes: addEntity(current.shapes, generatedUI),
+      }));
+    }
+
+    case "ADD_SCREEN": {
+      const screen = createScreen({
+        x: action.payload.x,
+        y: action.payload.y,
+        w: action.payload.w,
+        h: action.payload.h,
+        screenId: action.payload.screenId,
+        id: action.payload.id, // Pass optional id for Convex linking
+      });
+      return applyStateChange(state, action, (current) => ({
+        ...current,
+        shapes: addEntity(current.shapes, screen),
       }));
     }
 
@@ -590,6 +617,7 @@ function getFullShapeBounds(
     case "rect":
     case "ellipse":
     case "generatedui":
+    case "screen":
       return { x: shape.x, y: shape.y, w: shape.w, h: shape.h };
     case "text":
       return { x: shape.x, y: shape.y, w: shape.w ?? 100, h: shape.h ?? 20 };
@@ -689,6 +717,13 @@ function cloneShapeWithOffset(
         startY: shape.startY + offsetY,
         endX: shape.endX + offsetX,
         endY: shape.endY + offsetY,
+      };
+    case "screen":
+      return {
+        ...shape,
+        id: newId,
+        x: shape.x + offsetX,
+        y: shape.y + offsetY,
       };
   }
 }

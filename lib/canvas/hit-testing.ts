@@ -75,6 +75,7 @@ export function isPointInShape(point: Point, shape: Shape): boolean {
     }
 
     case "generatedui":
+    case "screen":
       return (
         point.x >= shape.x &&
         point.x <= shape.x + shape.w &&
@@ -163,6 +164,7 @@ function isPointInShapeBounds(point: Point, shape: Shape): boolean {
     case "rect":
     case "ellipse":
     case "generatedui":
+    case "screen":
       return (
         point.x >= shape.x &&
         point.x <= shape.x + shape.w &&
@@ -225,6 +227,7 @@ function getShapeBoundsArea(shape: Shape): number {
     case "rect":
     case "ellipse":
     case "generatedui":
+    case "screen":
       return shape.w * shape.h;
 
     case "freedraw": {
@@ -261,19 +264,28 @@ function getShapeBoundsArea(shape: Shape): number {
  * 1. Collect all shapes whose bounds contain the point
  * 2. For shapes that actually "hit" (border or fill), prefer the smallest one
  * 3. This ensures clicking on a smaller shape selects it, even if a larger shape is on top
+ *
+ * Options:
+ * - allowBoundsFallback: If true, fall back to bounds-only shapes when no direct hit
+ * - excludeScreenShapes: If true, skip screen shapes (used by eraser tool)
  */
 export function getShapeAtPoint(
   point: Point,
   shapes: Shape[],
-  options?: { allowBoundsFallback?: boolean }
+  options?: { allowBoundsFallback?: boolean; excludeScreenShapes?: boolean }
 ): Shape | null {
   const candidateShapes: Array<{ shape: Shape; hits: boolean; area: number }> =
     [];
   const allowBoundsFallback = options?.allowBoundsFallback ?? true;
+  const excludeScreenShapes = options?.excludeScreenShapes ?? false;
 
   // Collect all shapes whose bounds contain the point
   for (let i = shapes.length - 1; i >= 0; i--) {
     const shape = shapes[i];
+    // Skip screen shapes if excludeScreenShapes is true (for eraser tool)
+    if (excludeScreenShapes && shape.type === "screen") {
+      continue;
+    }
     if (isPointInShapeBounds(point, shape)) {
       const hits = isPointInShape(point, shape);
       const area = getShapeBoundsArea(shape);

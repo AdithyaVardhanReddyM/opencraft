@@ -1,9 +1,7 @@
 import {
   createAgent,
   createNetwork,
-  createState,
   createTool,
-  type Message,
   openai,
   type Tool,
 } from "@inngest/agent-kit";
@@ -25,6 +23,37 @@ const openrouter = (config: { model: string }) =>
     baseUrl: "https://openrouter.ai/api/v1",
   });
 
+// Get Convex HTTP endpoint URL for internal API calls
+const getConvexHttpUrl = () => {
+  const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+  if (!convexUrl) {
+    throw new Error("NEXT_PUBLIC_CONVEX_URL is not set");
+  }
+  // Convert deployment URL to HTTP endpoint URL
+  // e.g., https://happy-animal-123.convex.cloud -> https://happy-animal-123.convex.site
+  return convexUrl.replace(".convex.cloud", ".convex.site");
+};
+
+// Extract title from task summary
+const extractTitleFromSummary = (summary: string): string => {
+  // Try to extract a meaningful title from the summary
+  // Remove the <task_summary> tags first
+  const cleanSummary = summary
+    .replace(/<task_summary>/gi, "")
+    .replace(/<\/task_summary>/gi, "")
+    .trim();
+
+  // Take the first sentence or first 50 characters
+  const firstSentence = cleanSummary.split(/[.!?\n]/)[0]?.trim();
+  if (firstSentence && firstSentence.length > 0) {
+    return firstSentence.length > 50
+      ? firstSentence.substring(0, 47) + "..."
+      : firstSentence;
+  }
+
+  return "Generated UI";
+};
+
 // Chat function - directly invoke agent without network
 export const runChatAgent = inngest.createFunction(
   { id: "run-chat-agent" },
@@ -35,7 +64,7 @@ export const runChatAgent = inngest.createFunction(
       return sandbox.sandboxId;
     });
 
-    const { message, threadId } = event.data;
+    const { message, screenId, projectId } = event.data;
 
     // const previousMessages = await step.run(
     //   "get-previous-messages",
@@ -319,11 +348,92 @@ Do not include this until the task is 100% complete and validation has passed.`,
       return `https://${host}`;
     });
 
+    // Update screen in Convex with sandbox URL, files, and title
+    if (!isError && screenId) {
+      await step.run("update-screen-in-convex", async () => {
+        const convexHttpUrl = getConvexHttpUrl();
+        const title = extractTitleFromSummary(result.state.data.summary || "");
+
+        const response = await fetch(`${convexHttpUrl}/inngest/updateScreen`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            screenId,
+            sandboxUrl,
+            files: result.state.data.files,
+            title,
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(`Failed to update screen: ${error.error}`);
+        }
+
+        return { success: true };
+      });
+
+      // Create assistant message with summary
+      await step.run("create-assistant-message", async () => {
+        const convexHttpUrl = getConvexHttpUrl();
+
+        // Clean up the summary for display
+        const cleanSummary = (result.state.data.summary || "")
+          .replace(/<task_summary>/gi, "")
+          .replace(/<\/task_summary>/gi, "")
+          .trim();
+
+        const response = await fetch(`${convexHttpUrl}/inngest/createMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            screenId,
+            role: "assistant",
+            content: cleanSummary || "UI generation completed successfully.",
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(`Failed to create message: ${error.error}`);
+        }
+
+        return { success: true };
+      });
+    }
+
+    // Handle error case - create error message
+    if (isError && screenId) {
+      await step.run("create-error-message", async () => {
+        const convexHttpUrl = getConvexHttpUrl();
+
+        const response = await fetch(`${convexHttpUrl}/inngest/createMessage`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            screenId,
+            role: "assistant",
+            content:
+              "I encountered an error while generating the UI. Please try again with a different prompt or provide more details about what you'd like to create.",
+          }),
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(`Failed to create error message: ${error.error}`);
+        }
+
+        return { success: true };
+      });
+    }
+
     return {
-      threadId,
+      screenId,
+      projectId,
       files: result.state.data.files,
       summary: result.state.data.summary,
       url: sandboxUrl,
+      isError,
     };
   }
 );

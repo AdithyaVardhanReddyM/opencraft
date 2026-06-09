@@ -9,6 +9,7 @@ import {
   Type,
   Layout,
   Shapes,
+  Monitor,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
@@ -24,6 +25,7 @@ const SHAPE_ICON_MAP: Record<Shape["type"], LucideIcon> = {
   freedraw: Pencil,
   text: Type,
   generatedui: Layout,
+  screen: Monitor,
 };
 
 /**
@@ -57,6 +59,8 @@ export function getShapeName(shape: Shape): string {
     }
     case "generatedui":
       return "Generated UI";
+    case "screen":
+      return "Screen";
     default:
       return "Shape";
   }
@@ -71,6 +75,7 @@ export function getShapeCenter(shape: Shape): Point {
     case "rect":
     case "ellipse":
     case "generatedui":
+    case "screen":
       return {
         x: shape.x + shape.w / 2,
         y: shape.y + shape.h / 2,
@@ -116,6 +121,7 @@ export function getShapeBounds(shape: Shape): {
     case "rect":
     case "ellipse":
     case "generatedui":
+    case "screen":
       return { x: shape.x, y: shape.y, w: shape.w, h: shape.h };
     case "line":
     case "arrow": {
