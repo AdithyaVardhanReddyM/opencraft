@@ -3,7 +3,6 @@
 import { useState, useCallback } from "react";
 import {
   MessageSquare,
-  Code2,
   Pencil,
   AlertCircle,
   RefreshCw,
@@ -33,6 +32,7 @@ import {
 } from "@/components/ai-elements/prompt-input";
 import { StreamingIndicator } from "@/components/canvas/StreamingIndicator";
 import { useChatStreaming, type ChatMessage } from "@/hooks/use-chat-streaming";
+import { CodeExplorer } from "@/components/canvas/code-explorer";
 
 type ChatInputStatus = "submitted" | "streaming" | "ready" | "error";
 
@@ -43,16 +43,23 @@ const SUGGESTIONS = [
   "Add a navigation bar",
 ];
 
+// Sidebar widths
+const COLLAPSED_WIDTH = 340;
+const EXPANDED_WIDTH_VW = 50; // 50% of viewport width
+
 export function AISidebar({
   isOpen,
-  onClose,
   selectedScreenId,
   projectId,
+  sandboxId,
+  cachedFiles,
 }: {
   isOpen: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   selectedScreenId?: string;
   projectId?: string;
+  sandboxId?: string;
+  cachedFiles?: Record<string, string>;
 }) {
   const [activeTab, setActiveTab] = useState("chat");
 
@@ -87,15 +94,33 @@ export function AISidebar({
   // Map streaming status to chat input status
   const chatStatus: ChatInputStatus = status;
 
+  // Determine if sidebar should be expanded (Code tab is active)
+  const isExpanded = activeTab === "code";
+
+  // Calculate width based on expansion state
+  const sidebarWidth = isExpanded
+    ? `${EXPANDED_WIDTH_VW}vw`
+    : `${COLLAPSED_WIDTH}px`;
+
   if (!isOpen) return null;
 
   return (
-    <div
-      className="pointer-events-auto fixed left-3 z-40 flex flex-col animate-in slide-in-from-left-2 duration-200"
+    <motion.div
+      className="pointer-events-auto fixed left-3 z-[60] flex flex-col"
       style={{
         top: "60px",
         bottom: "12px",
-        width: "340px",
+      }}
+      initial={{ width: COLLAPSED_WIDTH, x: -10, opacity: 0 }}
+      animate={{
+        width: sidebarWidth,
+        x: 0,
+        opacity: 1,
+      }}
+      transition={{
+        width: { type: "spring", stiffness: 300, damping: 30 },
+        x: { duration: 0.2 },
+        opacity: { duration: 0.2 },
       }}
     >
       <div className="flex flex-col h-full rounded-xl bg-background/95 backdrop-blur-xl shadow-2xl overflow-hidden">
@@ -183,15 +208,16 @@ export function AISidebar({
             value="code"
             className="flex-1 flex flex-col overflow-hidden mt-0 data-[state=inactive]:hidden"
           >
-            <ComingSoonPlaceholder
-              icon={Code2}
-              title="Code Generation"
-              description="Generate production-ready code from your designs. Coming soon!"
+            <CodeExplorer
+              screenId={selectedScreenId}
+              sandboxId={sandboxId}
+              cachedFiles={cachedFiles}
+              isExpanded={isExpanded}
             />
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </motion.div>
   );
 }
 

@@ -463,6 +463,17 @@ function CanvasContent({ projectId }: { projectId: string }) {
         }}
         selectedScreenId={selectedScreenId}
         projectId={projectId}
+        sandboxId={
+          selectedScreenShape
+            ? screenDataMap.get(selectedScreenShape.id)?.sandboxId
+            : undefined
+        }
+        cachedFiles={
+          selectedScreenShape
+            ? (screensData?.find((s) => s.shapeId === selectedScreenShape.id)
+                ?.files as Record<string, string> | undefined)
+            : undefined
+        }
       />
 
       {/* Toolbar */}
