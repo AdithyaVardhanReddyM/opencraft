@@ -120,9 +120,22 @@ export function getStatusTextForEvent(event: AgentKitEvent): string {
     case "part.completed": {
       const partType = data.type as string | undefined;
       if (partType === "tool-call") {
-        return "Tool call";
+        const toolName = data.toolName as string | undefined;
+        if (toolName === "terminal") {
+          return "Command finished";
+        }
+        if (toolName === "createOrUpdateFiles") {
+          return "Files saved";
+        }
+        if (toolName === "readFiles") {
+          return "Files read";
+        }
+        return "Tool finished";
       }
-      return "Step complete";
+      if (partType === "text") {
+        return "Continuing";
+      }
+      return "Continuing";
     }
 
     case "run.completed":

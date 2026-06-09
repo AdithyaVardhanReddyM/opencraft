@@ -169,12 +169,12 @@ function CanvasContent({ projectId }: { projectId: string }) {
             }
             break;
           case "width":
-            if (["frame", "rect", "ellipse"].includes(shape.type)) {
+            if (["frame", "rect", "ellipse", "screen"].includes(shape.type)) {
               patch.w = value;
             }
             break;
           case "height":
-            if (["frame", "rect", "ellipse"].includes(shape.type)) {
+            if (["frame", "rect", "ellipse", "screen"].includes(shape.type)) {
               patch.h = value;
             }
             break;

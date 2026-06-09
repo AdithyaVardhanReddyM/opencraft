@@ -171,8 +171,14 @@ function StepItem({ step, isCompact, isLast }: StepItemProps) {
       transition={{ duration: 0.15 }}
       className={cn("flex items-center gap-2", isCompact && "opacity-60")}
     >
-      {/* Checkmark indicator for completed steps only */}
-      {!isPending && (
+      {/* Checkmark indicator for completed steps, spinner-like indicator for pending */}
+      {isPending ? (
+        isLast && (
+          <div className="flex h-4 w-4 items-center justify-center">
+            <div className="h-2 w-2 rounded-full bg-primary animate-pulse" />
+          </div>
+        )
+      ) : (
         <div className="flex h-4 w-4 items-center justify-center rounded-full bg-emerald-500/15">
           <Check className="h-2.5 w-2.5 text-emerald-500" />
         </div>

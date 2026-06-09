@@ -78,6 +78,7 @@ export function useChatStreaming({
   const pendingUserMessageRef = useRef<string | null>(null);
   const [isWaitingForResponse, setIsWaitingForResponse] = useState(false);
   const lastConvexMessageCountRef = useRef<number>(0);
+  const lastStatusTextRef = useRef<string>("");
 
   // Convex mutations and queries for persistence
   const createMessage = useMutation(api.messages.createMessage);
@@ -100,24 +101,32 @@ export function useChatStreaming({
       projectId: projectId || "",
     }),
     onEvent: (event) => {
-      // Map the event to a status text for display
-      const text = getStatusTextForEvent({
-        event: event.event,
-        data: event.data as Record<string, unknown>,
-      });
-      setStatusText(text);
-
-      // Track streaming steps for history display
       const eventType = event.event;
 
-      // Mark previous step as complete when a new major step starts
-      if (eventType === "run.started" || eventType === "part.created") {
+      // Map the event to a status text for display
+      const text = getStatusTextForEvent({
+        event: eventType,
+        data: event.data as Record<string, unknown>,
+      });
+
+      const prevText = lastStatusTextRef.current;
+      lastStatusTextRef.current = text;
+      setStatusText(text);
+
+      // Only stream.ended should mark everything complete
+      if (eventType === "stream.ended") {
+        setStreamingSteps((prev) =>
+          prev.map((s) => ({ ...s, status: "complete" as const }))
+        );
+        return;
+      }
+
+      // For part.created - this is a new meaningful step, mark previous complete and add new
+      if (eventType === "part.created") {
         setStreamingSteps((prev) => {
-          // Mark all pending steps as complete
           const updated = prev.map((s) =>
             s.status === "pending" ? { ...s, status: "complete" as const } : s
           );
-          // Add new step
           return [
             ...updated,
             {
@@ -128,18 +137,69 @@ export function useChatStreaming({
             },
           ];
         });
-      } else if (
+        return;
+      }
+
+      // For run.started - only add step if we don't have one yet (first event)
+      // This prevents the "Updating" step from being added and then immediately completed
+      if (eventType === "run.started") {
+        setStreamingSteps((prev) => {
+          // If we already have a pending step, just update its text
+          if (prev.length > 0 && prev[prev.length - 1].status === "pending") {
+            const last = prev[prev.length - 1];
+            return [...prev.slice(0, -1), { ...last, text }];
+          }
+          // Otherwise add a new step
+          return [
+            ...prev,
+            {
+              id: `${eventType}-${Date.now()}`,
+              text,
+              status: "pending" as const,
+              timestamp: new Date(),
+            },
+          ];
+        });
+        return;
+      }
+
+      // Ignore network/agent level completion events - they cause the gap issue
+      // These fire between run.started and the first part.created
+      if (
         eventType === "run.completed" ||
-        eventType === "stream.ended"
+        eventType === "network.completed" ||
+        eventType === "agent.completed"
       ) {
-        // Mark all steps as complete
-        setStreamingSteps((prev) =>
-          prev.map((s) => ({ ...s, status: "complete" as const }))
-        );
-      } else if (text !== statusText) {
-        // Update current step text for intermediate events
+        // Don't mark anything complete - just update text if needed
+        return;
+      }
+
+      // For part.completed - just update text, don't mark complete
+      if (eventType === "part.completed") {
         setStreamingSteps((prev) => {
           if (prev.length === 0) return prev;
+          const last = prev[prev.length - 1];
+          if (last.status === "pending") {
+            return [...prev.slice(0, -1), { ...last, text }];
+          }
+          return prev;
+        });
+        return;
+      }
+
+      // For all other events - update current step text if different
+      if (text !== prevText) {
+        setStreamingSteps((prev) => {
+          if (prev.length === 0) {
+            return [
+              {
+                id: `${eventType}-${Date.now()}`,
+                text,
+                status: "pending" as const,
+                timestamp: new Date(),
+              },
+            ];
+          }
           const last = prev[prev.length - 1];
           if (last.status === "pending") {
             return [...prev.slice(0, -1), { ...last, text }];
@@ -297,7 +357,15 @@ export function useChatStreaming({
       lastMessageRef.current = trimmedContent;
       pendingUserMessageRef.current = trimmedContent;
       setStatusText("Starting...");
-      setStreamingSteps([]); // Clear previous steps
+      // Create initial step immediately so UI shows activity right away
+      setStreamingSteps([
+        {
+          id: `initial-${Date.now()}`,
+          text: "Starting...",
+          status: "pending" as const,
+          timestamp: new Date(),
+        },
+      ]);
       setIsWaitingForResponse(true); // Start waiting for response
       lastConvexMessageCountRef.current = convexMessages?.length || 0;
 
