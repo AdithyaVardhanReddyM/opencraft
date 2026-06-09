@@ -1,10 +1,10 @@
 ---
-inclusion: always
+inclusion: manual
 ---
 
 <!------------------------------------------------------------------------------------
    Add rules to this file or a short description and have Kiro refine them for you.
-   
+
    Learn about inclusion modes: https://kiro.dev/docs/steering/#inclusion-modes
 ------------------------------------------------------------------------------------->
 
@@ -503,6 +503,7 @@ import type { ToolManifest } from "@/app/api/inngest/functions/agents/types";
 
 export default function ChatTestPage() {
 return (
+
 <div>
 <p>Minimal example using a single-threaded conversation.</p>
 <Chat />
@@ -538,6 +539,7 @@ await sendMessage(value);
 }
 
 return (
+
 <div>
 <div>
 {messages.map(({ id, role, parts }) => (
@@ -580,6 +582,7 @@ if (part.state !== "output-available") return null;
 if (part.toolName === "select_events") {
 const { data } = part.output;
 return (
+
 <div>
 <div>Selected Events:</div>
 <ul>
@@ -597,6 +600,7 @@ return (
 if (part.toolName === "generate_sql") {
 const { data } = part.output;
 return (
+
 <div>
 <div>SQL Query:</div>
 <p>{data.title}</p>

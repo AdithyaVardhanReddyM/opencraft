@@ -2,21 +2,25 @@
 
 ## Overview
 
-Unit {set} uses Inngest AgentKit with E2B sandboxes to provide AI-powered UI generation. Users can chat with an AI agent that writes and executes Next.js code in isolated sandbox environments with persistent sessions and conversation history.
+Unit {set} uses Inngest AgentKit with E2B sandboxes to provide AI-powered UI generation. Users can chat with an AI agent that writes and executes Next.js code in isolated sandbox environments with persistent sessions, conversation history, and real-time streaming.
 
 ## Architecture Flow
 
 ```
-User Message → /api/chat → Inngest Event → AgentKit Network → E2B Sandbox → Convex Update → Response
+User Message → Convex (persist) → /api/chat → Inngest Event → AgentKit Network → Realtime Channel → useAgents Hook → UI
+                                                    ↓
+                                              E2B Sandbox → Convex Update
 ```
 
 1. User sends message via `AISidebar` component
 2. User message saved to Convex `messages` table
-3. `/api/chat` validates request and sends Inngest event
-4. `runChatAgent` function gets/creates sandbox and runs agent network
-5. Agent uses tools to write/read files and execute commands in sandbox
-6. Response saved to Convex with files, summary, and sandbox URL
-7. UI updates reactively via Convex subscriptions
+3. `useChatStreaming` hook sends message via `useAgents` hook
+4. `/api/chat` receives request and sends Inngest event
+5. `runChatAgent` function gets/creates sandbox and runs agent network
+6. Agent chunks published to realtime channel via `streaming.publish`
+7. `useAgents` hook receives events and updates UI state in real-time
+8. Response saved to Convex with files, summary, and sandbox URL
+9. UI updates reactively via Convex subscriptions
 
 ## Core Components
 
@@ -24,24 +28,52 @@ User Message → /api/chat → Inngest Event → AgentKit Network → E2B Sandbo
 
 ```typescript
 import { Inngest } from "inngest";
+import { realtimeMiddleware } from "@inngest/realtime/middleware";
 
 export const inngest = new Inngest({
   id: "unit-set",
   isDev: process.env.NODE_ENV === "development",
+  middleware: [realtimeMiddleware()],
 });
+```
+
+### Realtime Channel (`inngest/realtime.ts`)
+
+```typescript
+import { channel, topic } from "@inngest/realtime";
+import { AgentMessageChunkSchema } from "@inngest/agent-kit";
+
+export const userChannel = channel(
+  (channelKey: string) => `user:${channelKey}`
+).addTopic(topic("agent_stream").schema(AgentMessageChunkSchema));
 ```
 
 ### Agent Function (`inngest/functions.ts`)
 
 The `runChatAgent` function orchestrates the AI workflow:
 
-- Event: `chat/message.sent`
+- Event: `agent/chat.requested`
 - Gets or creates E2B sandbox with `unitset-sandbox-v1` template
 - Supports sandbox reuse via `sandboxId` stored in screen record
 - Auto-pause enabled with 15-minute timeout
 - Loads previous messages for conversation context
 - Runs `chatAgent` in a network with max 15 iterations
+- Streams events to realtime channel via `publish`
 - Saves results to Convex: files, summary, sandbox URL, title
+
+### Streaming Configuration
+
+```typescript
+// Run network with streaming enabled
+const result = await network.run(message, {
+  state,
+  streaming: {
+    publish: async (chunk: AgentMessageChunk) => {
+      await publish(userChannel(targetChannel).agent_stream(chunk));
+    },
+  },
+});
+```
 
 ### UI Coding Agent
 
@@ -147,11 +179,26 @@ Internal endpoints for Inngest workflow:
 Sends user message to agent:
 
 ```typescript
-// Request
+// Request (supports both formats)
+// useAgents format:
+{ userMessage: { id, content, role }, channelKey, userId }
+// Legacy format:
 { message: string, screenId: string, projectId: string }
 
 // Response
 { success: true, screenId: string, eventId: string }
+```
+
+### POST `/api/realtime/token`
+
+Generates subscription token for frontend:
+
+```typescript
+// Request
+{ channelKey: string }
+
+// Response
+{ token: string, ... }
 ```
 
 ### `/api/inngest`
@@ -163,13 +210,71 @@ Inngest webhook handler serving:
 
 ## UI Integration
 
+### AgentProviderWrapper (`components/AgentProviderWrapper.tsx`)
+
+Wraps the app with `AgentProvider` from `@inngest/use-agent`:
+
+```typescript
+<AgentProvider
+  userId={userId}
+  api={{
+    sendMessage: "/api/chat",
+    getRealtimeToken: "/api/realtime/token",
+  }}
+>
+  {children}
+</AgentProvider>
+```
+
+### useChatStreaming Hook (`hooks/use-chat-streaming.ts`)
+
+Custom hook that wraps `useAgents` from `@inngest/use-agent`:
+
+```typescript
+export function useChatStreaming({
+  screenId,
+  projectId,
+}: UseChatStreamingOptions): UseChatStreamingReturn {
+  const {
+    messages: agentMessages,
+    status: agentStatus,
+    sendMessage: agentSendMessage,
+    error: agentError,
+  } = useAgents({
+    state: (): ClientState => ({
+      screenId: screenId || "",
+      projectId: projectId || "",
+    }),
+    onEvent: (event) => {
+      // Map events to status text for display
+      const text = getStatusTextForEvent(event);
+      setStatusText(text);
+    },
+  });
+  // ...
+}
+```
+
+**Returned Values:**
+
+- `messages`: Merged Convex history + streaming messages
+- `isLoading`: Whether agent is processing
+- `isLoadingHistory`: Whether loading Convex messages
+- `status`: "ready" | "submitted" | "streaming" | "error"
+- `statusText`: Human-readable status from streaming events
+- `streamingSteps`: Array of completed/pending steps
+- `error`: Error object with retry capability
+- `sendMessage`: Send message function
+- `retryLastMessage`: Retry failed message
+
 ### AISidebar Component
 
 Located at `components/canvas/AISidebar.tsx`:
 
 - Three tabs: Chat, Edit (coming soon), Code (coming soon)
 - Message history with user/assistant bubbles (reactive via Convex)
-- Thinking indicator during processing
+- Real-time streaming status indicator
+- Streaming steps display during processing
 - Suggestion chips for quick prompts
 - Auto-resize textarea input
 - Copy message functionality
@@ -180,18 +285,51 @@ Located at `components/canvas/AISidebar.tsx`:
 
 1. User types message and sends
 2. User message saved to Convex via `createMessage` mutation
-3. POST to `/api/chat` with message, screenId, projectId
-4. Show thinking indicator
-5. Inngest workflow processes message
-6. Assistant response saved to Convex
-7. UI updates reactively via `useQuery(api.messages.getMessages)`
+3. `useChatStreaming` calls `agentSendMessage` from `useAgents`
+4. Hook receives streaming events via realtime channel
+5. UI updates in real-time with status text and steps
+6. Inngest workflow processes message
+7. Assistant response saved to Convex
+8. UI detects new Convex message and clears loading state
 
 ### Message Display
 
 - User messages: Right-aligned bubbles with copy button
 - Assistant messages: Left-aligned with logo, credits, timestamp
-- `<files_summary>` tags stripped from display but preserved in storage
+- `<files_summary>` and `<task_summary>` tags stripped from display
 - Error messages shown with retry option
+- Streaming messages shown with loading indicator
+
+## Streaming Events
+
+### Event Types
+
+| Event                       | Description                    | UI Impact                 |
+| --------------------------- | ------------------------------ | ------------------------- |
+| `run.started`               | Agent/network execution begins | Show "Starting..." status |
+| `run.completed`             | Agent/network logic finished   | Mark steps complete       |
+| `stream.ended`              | All streaming complete         | Clear loading state       |
+| `part.created`              | New message part created       | Add new streaming step    |
+| `text.delta`                | Text chunk streamed            | Update status text        |
+| `part.completed`            | Part finalized                 | Mark step complete        |
+| `tool_call.arguments.delta` | Tool args streaming            | Show tool being called    |
+| `tool_call.output.delta`    | Tool output streaming          | Show tool result          |
+
+### Status Mapping (`lib/streaming-utils.ts`)
+
+```typescript
+export function getStatusTextForEvent(event: StreamingEvent): string {
+  switch (event.event) {
+    case "run.started":
+      return "Starting...";
+    case "part.created":
+      return "Thinking...";
+    case "tool_call.arguments.delta":
+      return `Calling ${event.data?.toolName || "tool"}...`;
+    // ...
+  }
+}
+```
 
 ## Agent System Prompt Rules
 
@@ -289,18 +427,35 @@ The `runChatAgent` function executes these steps:
 2. **get-or-create-sandbox**: Connect to existing or create new sandbox
 3. **notify-context-lost**: (conditional) Notify user if sandbox session expired
 4. **get-previous-messages**: Load conversation history for context
-5. **Run agent network**: Execute AI agent with tools
+5. **Run agent network**: Execute AI agent with tools and streaming
 6. **get-sandbox-url**: Get live preview URL
 7. **update-screen-in-convex**: Save files, URL, title to screen record
 8. **create-assistant-message**: Save response to messages table
 9. **create-error-message**: (on error) Save error message
 
+## Key Files
+
+| File                                  | Purpose                                 |
+| ------------------------------------- | --------------------------------------- |
+| `inngest/client.ts`                   | Inngest client with realtime middleware |
+| `inngest/realtime.ts`                 | Realtime channel definition             |
+| `inngest/functions.ts`                | Agent function with streaming           |
+| `inngest/utils.ts`                    | Sandbox and message utilities           |
+| `hooks/use-chat-streaming.ts`         | React hook wrapping useAgents           |
+| `components/AgentProviderWrapper.tsx` | AgentProvider setup                     |
+| `components/canvas/AISidebar.tsx`     | Chat UI component                       |
+| `lib/streaming-utils.ts`              | Event to status text mapping            |
+| `app/api/chat/route.ts`               | Chat API endpoint                       |
+| `app/api/realtime/token/route.ts`     | Token generation endpoint               |
+
 ## Future Enhancements
 
-- [ ] Real-time streaming with `@inngest/realtime`
+- [x] Real-time streaming with `@inngest/realtime`
+- [x] Streaming status indicators
 - [ ] Edit mode for canvas element modification
 - [ ] Code generation from designs
 - [ ] Multi-agent workflows (reviewer, executor)
 - [ ] Human-in-the-loop approval for destructive actions
 - [ ] Sandbox file sync on reconnect
 - [ ] Message threading and branching
+- [ ] Tool call visualization in UI

@@ -35,6 +35,8 @@ import { Stroke } from "@/components/canvas/shapes/Stroke";
 import { Text } from "@/components/canvas/shapes/Text";
 import { Screen } from "@/components/canvas/shapes/Screen";
 import { DeleteScreenModal } from "@/components/canvas/DeleteScreenModal";
+import { ScreenToolbar } from "@/components/canvas/ScreenToolbar";
+import type { ScreenShape } from "@/types/canvas";
 
 // Import preview components
 import { FramePreview } from "@/components/canvas/shapes/FramePreview";
@@ -225,6 +227,7 @@ function CanvasContent({ projectId }: { projectId: string }) {
       {
         _id: screen._id,
         sandboxUrl: screen.sandboxUrl,
+        sandboxId: screen.sandboxId,
         title: screen.title,
       },
     ])
@@ -346,6 +349,43 @@ function CanvasContent({ projectId }: { projectId: string }) {
     }
   }, [screenToDelete, dispatchShapes, deleteScreenMutation]);
 
+  // Handle screen toolbar delete - opens the delete modal
+  const handleToolbarDelete = useCallback(() => {
+    if (!selectedScreenShape) return;
+    const screenData = screenDataMap.get(selectedScreenShape.id);
+    setScreenToDelete({
+      shapeId: selectedScreenShape.id,
+      screenId: screenData?._id ?? null,
+      title: screenData?.title || "Screen",
+    });
+    setDeleteModalOpen(true);
+  }, [selectedScreenShape, screenDataMap]);
+
+  // Handle screen toolbar resize
+  const handleToolbarResize = useCallback(
+    (width: number, height: number) => {
+      if (!selectedScreenShape) return;
+      dispatchShapes({
+        type: "UPDATE_SHAPE",
+        payload: {
+          id: selectedScreenShape.id,
+          patch: { w: width, h: height },
+        },
+      });
+    },
+    [selectedScreenShape, dispatchShapes]
+  );
+
+  // Handle screen toolbar refresh - dispatch custom event to refresh iframe
+  const handleToolbarRefresh = useCallback(() => {
+    if (!selectedScreenShape) return;
+    window.dispatchEvent(
+      new CustomEvent("screen-refresh", {
+        detail: { shapeId: selectedScreenShape.id },
+      })
+    );
+  }, [selectedScreenShape]);
+
   const handleDeleteCancel = useCallback(() => {
     setDeleteModalOpen(false);
     setScreenToDelete(null);
@@ -459,6 +499,7 @@ function CanvasContent({ projectId }: { projectId: string }) {
           });
         }}
         isOpen={isLayersSidebarOpen}
+        screenDataMap={screenDataMap}
       />
 
       {/* Back to Dashboard + Properties Bar */}
@@ -650,6 +691,18 @@ function CanvasContent({ projectId }: { projectId: string }) {
               />
             );
           })}
+
+          {/* Screen Toolbar - appears above selected screen shapes (inside transform container) */}
+          {selectedScreenShape && selectedScreenShape.type === "screen" && (
+            <ScreenToolbar
+              shape={selectedScreenShape as ScreenShape}
+              screenData={screenDataMap.get(selectedScreenShape.id)}
+              viewport={viewport}
+              onDelete={handleToolbarDelete}
+              onResize={handleToolbarResize}
+              onRefresh={handleToolbarRefresh}
+            />
+          )}
         </div>
       </div>
     </div>

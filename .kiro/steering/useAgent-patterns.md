@@ -1,10 +1,10 @@
 ---
-inclusion: always
+inclusion: manual
 ---
 
 <!------------------------------------------------------------------------------------
    Add rules to this file or a short description and have Kiro refine them for you.
-   
+
    Learn about inclusion modes: https://kiro.dev/docs/steering/#inclusion-modes
 ------------------------------------------------------------------------------------->
 
@@ -199,6 +199,7 @@ e.currentTarget.reset();
 };
 
 return (
+
 <div>
 <div>Status: {status}</div>
 <div>Connected: {isConnected ? "Yes" : "No"}</div>
@@ -233,6 +234,7 @@ Error: {error.message}
 // A simple component to render a message with all its parts
 function Message({ message }: { message: ConversationMessage }) {
 return (
+
 <div className={`message ${message.role}`}>
 <strong>{message.role}</strong>
 {message.parts.map((part, index) => {

@@ -19,12 +19,20 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
+interface ScreenData {
+  _id: string;
+  sandboxUrl?: string;
+  sandboxId?: string;
+  title?: string;
+}
+
 interface LayersSidebarProps {
   shapes: Shape[];
   selectedShapes: SelectionMap;
   onShapeClick: (shapeId: string) => void;
   onReorderShape?: (shapeId: string, newIndex: number) => void;
   isOpen: boolean;
+  screenDataMap?: Map<string, ScreenData>;
 }
 
 interface ShapeItemProps {
@@ -37,6 +45,7 @@ interface ShapeItemProps {
   onDrop: (e: React.DragEvent) => void;
   isDragging: boolean;
   isDragOver: boolean;
+  screenTitle?: string;
 }
 
 function ShapeItem({
@@ -49,9 +58,16 @@ function ShapeItem({
   onDrop,
   isDragging,
   isDragOver,
+  screenTitle,
 }: ShapeItemProps) {
   const Icon = getShapeIcon(shape.type);
-  const name = getShapeName(shape);
+  const fullName = getShapeName(shape, screenTitle);
+  // Truncate long names with ellipsis
+  const maxLength = 30;
+  const name =
+    fullName.length > maxLength
+      ? `${fullName.slice(0, maxLength)}...`
+      : fullName;
 
   return (
     <div
@@ -61,7 +77,7 @@ function ShapeItem({
       onDragOver={onDragOver}
       onDrop={onDrop}
       className={cn(
-        "group flex w-full items-center gap-1 rounded-md text-sm transition-all duration-200 outline-none",
+        "group flex w-full min-w-0 items-center gap-1 rounded-md text-sm transition-all duration-200 outline-none",
         isSelected
           ? "bg-primary/10 text-primary font-medium"
           : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
@@ -78,7 +94,7 @@ function ShapeItem({
       {/* Clickable content */}
       <button
         onClick={onClick}
-        className="flex items-center gap-2.5 flex-1 py-2 pr-2.5 outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-r-md"
+        className="flex items-center gap-2.5 flex-1 min-w-0 py-2 pr-2.5 outline-none focus-visible:ring-2 focus-visible:ring-primary/20 rounded-r-md"
       >
         <Icon
           className={cn(
@@ -88,7 +104,9 @@ function ShapeItem({
               : "text-muted-foreground/70 group-hover:text-foreground"
           )}
         />
-        <span className="truncate flex-1 text-left">{name}</span>
+        <span className="text-left" title={fullName}>
+          {name}
+        </span>
         {isSelected && (
           <div className="h-1.5 w-1.5 rounded-full bg-primary shrink-0 shadow-[0_0_4px_rgba(0,0,0,0.2)]" />
         )}
@@ -202,6 +220,7 @@ export function LayersSidebar({
   onShapeClick,
   onReorderShape,
   isOpen,
+  screenDataMap,
 }: LayersSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -274,7 +293,7 @@ export function LayersSidebar({
         width: "285px",
       }}
     >
-      <div className="flex flex-col h-full rounded-xl bg-background/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+      <div className="flex flex-col h-full rounded-xl bg-background/95 backdrop-blur-xl shadow-2xl overflow-hidden min-h-0">
         {/* Header */}
         <div className="relative flex flex-col gap-3 p-3 bg-muted/5">
           <div className="absolute bottom-0 left-4 right-4 h-px bg-border/40" />
@@ -299,7 +318,7 @@ export function LayersSidebar({
         {displayShapes.length === 0 ? (
           <EmptyState hasSearch={searchQuery.length > 0} />
         ) : (
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0 scrollbar-thin">
             <div className="p-2 space-y-0.5">
               {displayShapes.map((shape) => (
                 <ShapeItem
@@ -313,6 +332,11 @@ export function LayersSidebar({
                   onDrop={(e) => handleDrop(e, shape.id)}
                   isDragging={draggedId === shape.id}
                   isDragOver={dragOverId === shape.id}
+                  screenTitle={
+                    shape.type === "screen"
+                      ? screenDataMap?.get(shape.id)?.title
+                      : undefined
+                  }
                 />
               ))}
             </div>

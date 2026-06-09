@@ -446,6 +446,39 @@
   background: var(--foreground);
 }
 
+/* Thin scrollbar for sidebars and panels */
+.scrollbar-thin::-webkit-scrollbar,
+.scrollbar-thin *::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track,
+.scrollbar-thin *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb,
+.scrollbar-thin *::-webkit-scrollbar-thumb {
+  background: oklch(0.4 0.01 100 / 0.4);
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover,
+.scrollbar-thin *::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.5 0.01 100 / 0.6);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb,
+.dark .scrollbar-thin *::-webkit-scrollbar-thumb {
+  background: oklch(0.5 0.01 100 / 0.25);
+}
+
+.dark .scrollbar-thin::-webkit-scrollbar-thumb:hover,
+.dark .scrollbar-thin *::-webkit-scrollbar-thumb:hover {
+  background: oklch(0.6 0.01 100 / 0.4);
+}
+
 /* Selection Styling */
 ::selection {
   background: var(--primary);

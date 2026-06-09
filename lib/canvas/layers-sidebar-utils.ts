@@ -37,8 +37,10 @@ export function getShapeIcon(type: Shape["type"]): LucideIcon {
 
 /**
  * Generate a readable display name for a shape
+ * @param shape - The shape to get the name for
+ * @param screenTitle - Optional title for screen shapes (from Convex)
  */
-export function getShapeName(shape: Shape): string {
+export function getShapeName(shape: Shape, screenTitle?: string): string {
   switch (shape.type) {
     case "frame":
       return `Frame ${shape.frameNumber}`;
@@ -60,7 +62,7 @@ export function getShapeName(shape: Shape): string {
     case "generatedui":
       return "Generated UI";
     case "screen":
-      return "Screen";
+      return screenTitle || "Untitled Screen";
     default:
       return "Shape";
   }
