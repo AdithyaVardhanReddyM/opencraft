@@ -16,7 +16,11 @@ Unit {set} is an AI-powered design-to-code platform that transforms wireframes i
   - Pan with middle/right mouse or Shift + drag
   - Zoom with Ctrl/Cmd + wheel (zooms around cursor)
   - Hand tool with Shift key
-- AI-powered generation of landing pages, dashboards, and components
+- AI-powered generation of landing pages, dashboards, and components:
+  - Chat with AI agent via sidebar panel
+  - Agent writes and executes code in isolated E2B sandbox
+  - Live preview of generated UI with hot reload
+  - Full Next.js + shadcn/ui environment
 - Real-time AI chat for design assistance
 - Visual editor with Figma-like properties panel
 - Auto-save to localStorage with Convex sync

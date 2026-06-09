@@ -38,9 +38,16 @@
   projects.ts          - Project queries and mutations
   schema.ts            - Database schema
 
-/inngest               - Inngest background functions
+/inngest               - Inngest AgentKit AI workflow
   client.ts            - Inngest client configuration
-  functions.ts         - Agent functions (chat agent, etc.)
+  functions.ts         - Agent functions (runChatAgent, helloWorld)
+  utils.ts             - Sandbox utilities (getSandbox, message parsing)
+
+/sandbox-templates     - E2B sandbox templates
+  /nextjs              - Next.js sandbox template
+    e2b.toml           - Template configuration (unitset-sandbox-v1)
+    e2b.Dockerfile     - Sandbox Docker image
+    compile_page.sh    - Startup script for dev server
 
 /hooks                 - Custom React hooks
   use-canvas.ts        - Canvas-related hooks (deprecated, use use-infinite-canvas)
@@ -121,3 +128,11 @@ ClerkProvider
 - Strict TypeScript configuration
 - Convex generates types automatically in `/_generated`
 - Use proper typing for all components and functions
+
+### AI Workflow Architecture
+
+- Inngest handles background job orchestration
+- AgentKit provides multi-agent network with tools
+- E2B sandboxes run isolated Next.js environments
+- OpenRouter proxies AI model requests
+- See `ai-workflow.md` for detailed architecture

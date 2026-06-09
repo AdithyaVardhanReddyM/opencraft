@@ -1,3 +1,7 @@
+---
+inclusion: manual
+---
+
 # AgentKit by Inngest - Coding Agent Guide
 
 ## Overview

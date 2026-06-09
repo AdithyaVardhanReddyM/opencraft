@@ -1,13 +1,21 @@
 import {
   createAgent,
   createNetwork,
+  createState,
   createTool,
+  type Message,
   openai,
+  type Tool,
 } from "@inngest/agent-kit";
 import { inngest } from "./client";
 import Sandbox from "@e2b/code-interpreter";
 import { getSandbox, lastAssistantTextMessageContent } from "./utils";
 import z from "zod";
+
+interface AgentState {
+  summary: string;
+  files: { [path: string]: string };
+}
 
 // OpenRouter provider using OpenAI-compatible API
 const openrouter = (config: { model: string }) =>
@@ -29,8 +37,36 @@ export const runChatAgent = inngest.createFunction(
 
     const { message, threadId } = event.data;
 
+    // const previousMessages = await step.run(
+    //   "get-previous-messages",
+    //   async () => {
+    //     const formattedMessages: Message[] = [];
+
+    //     //convex query to fetch prev messages for this screen, orderby created ay desc -> take 5 -> reverse order
+    //     messages = [];
+
+    //     for (const message of messages) {
+    //       formattedMessages.push({
+    //         type: "text",
+    //         role: message.role === "ASSISTANT" ? "assistant" : "user",
+    //         content: message.content,
+    //       });
+    //     }
+    //     return formattedMessages;
+    //   }
+    // );
+
+    // add this after implementing above step
+    // const state = createState<AgentState>(
+    //   {
+    //     summary: "",
+    //     files: {},
+    //   },
+    //   { messages: previosMessages }
+    // );
+
     // UI Coding Agent
-    const chatAgent = createAgent({
+    const chatAgent = createAgent<AgentState>({
       name: "UI Coding Agent",
       description:
         "An expert Next.js UI developer that creates stunning, professional, and clean user interfaces. Specializes in building beautiful components and pages using shadcn/ui, Tailwind CSS, and the project's custom theme system.",
@@ -123,14 +159,28 @@ Read file contents.
 5. Use createOrUpdateFiles for all file changes
 6. Use terminal for package installation
 
+## Validation (REQUIRED)
+After writing coding in the files, you MUST run this validation command:
+\`./node_modules/.bin/tsc --noEmit\`
+
+This catches:
+- TypeScript + import errors (tsc --noEmit)
+
+If validation fails:
+1. Read the error output carefully
+2. Fix ALL errors in your code
+3. Re-run the validation command
+
+DO NOT output the task_summary until the validation passes successfully.
+
 ## Final Output
-After ALL tool calls complete, respond with ONLY:
+After ALL tool calls complete AND validation passes, respond with ONLY:
 
 <task_summary>
 Brief description of what was created or changed.
 </task_summary>
 
-Do not include this until the task is 100% complete.`,
+Do not include this until the task is 100% complete and validation has passed.`,
       model: openrouter({ model: "x-ai/grok-4.1-fast:free" }),
       tools: [
         createTool({
@@ -180,7 +230,10 @@ Do not include this until the task is 100% complete.`,
               })
             ),
           }),
-          handler: async ({ files }, { step, network }) => {
+          handler: async (
+            { files },
+            { step, network }: Tool.Options<AgentState>
+          ) => {
             const newFiles = await step?.run(
               "createorUpdateFiles",
               async () => {
@@ -239,10 +292,11 @@ Do not include this until the task is 100% complete.`,
       },
     });
 
-    const network = createNetwork({
+    const network = createNetwork<AgentState>({
       name: "chat-agent-network",
       agents: [chatAgent],
       maxIter: 15,
+      // defaultState: state  (add this after adding state code above)
       router: async ({ network }) => {
         const summary = network.state.data.summary;
         if (summary) {
@@ -253,6 +307,11 @@ Do not include this until the task is 100% complete.`,
     });
 
     const result = await network.run(message);
+    // const result = await network.run(message, {state}); (Use this after adding state)
+
+    const isError =
+      !result.state.data.summary ||
+      Object.keys(result.state.data.files || {}).length === 0;
 
     const sandboxUrl = await step.run("get-sandbox-url", async () => {
       const sandbox = await getSandbox(sandboxId);

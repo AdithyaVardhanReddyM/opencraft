@@ -11,6 +11,8 @@
 # const sandbox = await Sandbox.create('unitset-sandbox-v1')
 
 team_id = "5618d3ca-a5f1-494c-8026-8fb8a9261848"
+memory_mb = 2_048
+cpu_count = 4
 start_cmd = "/compile_page.sh"
 dockerfile = "e2b.Dockerfile"
 template_name = "unitset-sandbox-v1"
