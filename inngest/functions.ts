@@ -5,8 +5,10 @@ import {
   createTool,
   openai,
   type Tool,
+  type AgentMessageChunk,
 } from "@inngest/agent-kit";
 import { inngest } from "./client";
+import { userChannel } from "./realtime";
 import Sandbox from "@e2b/code-interpreter";
 import {
   getSandbox,
@@ -69,9 +71,20 @@ const SANDBOX_AUTO_PAUSE_TIMEOUT_MS = 15 * 60 * 1000;
 // Chat function - directly invoke agent without network
 export const runChatAgent = inngest.createFunction(
   { id: "run-chat-agent" },
-  { event: "chat/message.sent" },
-  async ({ event, step }) => {
-    const { message, screenId, projectId } = event.data;
+  { event: "agent/chat.requested" },
+  async ({ event, step, publish }) => {
+    // Support both useAgents format (userMessage object) and legacy format (message string)
+    const {
+      userMessage,
+      message: legacyMessage,
+      screenId,
+      projectId,
+      channelKey,
+      userId,
+    } = event.data;
+
+    // Extract message content - prefer userMessage.content, fall back to legacy message
+    const message = userMessage?.content || legacyMessage;
 
     // Step 1: Get screen to check for existing sandbox
     const screen = await step.run("get-screen", async () => {
@@ -82,7 +95,6 @@ export const runChatAgent = inngest.createFunction(
         body: JSON.stringify({ screenId }),
       });
       if (!response.ok) {
-        console.error("Failed to get screen");
         return null;
       }
       return (await response.json()) as ConvexScreen | null;
@@ -101,10 +113,7 @@ export const runChatAgent = inngest.createFunction(
           });
           return { sandboxId: sandbox.sandboxId, contextLost: false };
         } catch (error) {
-          console.warn(
-            "Failed to connect to existing sandbox, creating new one:",
-            error
-          );
+          // Failed to connect to existing sandbox, creating new one
           // Mark that context was lost due to sandbox failure
           contextLost = true;
         }
@@ -157,7 +166,6 @@ export const runChatAgent = inngest.createFunction(
           body: JSON.stringify({ screenId, limit: 10 }),
         });
         if (!response.ok) {
-          console.error("Failed to get messages");
           return [];
         }
         const messages = (await response.json()) as ConvexMessage[];
@@ -319,9 +327,6 @@ Do not include these tags until the task is 100% complete and validation has pas
                 });
                 return result.stdout;
               } catch (e) {
-                console.error(
-                  `Command failed: ${e} \nstdout: ${buffers.stdout}\nstderror: ${buffers.stderr}`
-                );
                 return `Command failed: ${e} \nstdout: ${buffers.stdout}\nstderror: ${buffers.stderr}`;
               }
             });
@@ -429,7 +434,23 @@ Do not include these tags until the task is 100% complete and validation has pas
       },
     });
 
-    const result = await network.run(message, { state });
+    // Determine the target channel for streaming
+    // The frontend subscribes using userId as the channel key (from AgentProvider)
+    // We must publish to the same channel the frontend is subscribed to
+    // Priority: userId (what frontend subscribes to) > channelKey > screenId
+    const targetChannel = userId || channelKey || screenId;
+
+    // Run the network with streaming enabled if we have a channel
+    const result = await network.run(message, {
+      state,
+      ...(targetChannel && {
+        streaming: {
+          publish: async (chunk: AgentMessageChunk) => {
+            await publish(userChannel(targetChannel).agent_stream(chunk));
+          },
+        },
+      }),
+    });
 
     const isError =
       !result.state.data.summary ||

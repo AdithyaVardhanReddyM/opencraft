@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
   MessageSquare,
   Code2,
@@ -15,16 +15,13 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { useQuery, useMutation } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import {
   Conversation,
   ConversationContent,
   ConversationScrollButton,
 } from "@/components/ai-elements/conversation";
 import { MessageResponse } from "@/components/ai-elements/message";
-import { Loader } from "@/components/ai-elements/loader";
+import { Shimmer } from "@/components/ai-elements/shimmer";
 import Image from "next/image";
 import {
   PromptInput,
@@ -34,20 +31,8 @@ import {
   PromptInputSubmit,
   PromptInputTextarea,
 } from "@/components/ai-elements/prompt-input";
-
-interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-  isError?: boolean;
-}
-
-interface ErrorState {
-  message: string;
-  originalMessage: string;
-  canRetry: boolean;
-}
+import { StreamingIndicator } from "@/components/canvas/StreamingIndicator";
+import { useChatStreaming, type ChatMessage } from "@/hooks/use-chat-streaming";
 
 type ChatInputStatus = "submitted" | "streaming" | "ready" | "error";
 
@@ -57,15 +42,6 @@ const SUGGESTIONS = [
   "Design a login form",
   "Add a navigation bar",
 ];
-
-/**
- * Strip files_summary tags from message content for display
- */
-function stripFilesSummary(content: string): string {
-  return content
-    .replace(/<files_summary>[\s\S]*?<\/files_summary>/g, "")
-    .trim();
-}
 
 export function AISidebar({
   isOpen,
@@ -79,161 +55,22 @@ export function AISidebar({
   projectId?: string;
 }) {
   const [activeTab, setActiveTab] = useState("chat");
-  const [localMessages, setLocalMessages] = useState<ChatMessage[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [threadId, setThreadId] = useState<string | null>(null);
-  const [error, setError] = useState<ErrorState | null>(null);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
-  const [chatStatus, setChatStatus] = useState<ChatInputStatus>("ready");
 
-  // Mutation to save user messages to database
-  const createMessage = useMutation(api.messages.createMessage);
-
-  // Fetch messages from Convex when screen is selected
-  const convexMessages = useQuery(
-    api.messages.getMessages,
-    selectedScreenId ? { screenId: selectedScreenId as Id<"screens"> } : "skip"
-  );
-
-  // Convert Convex messages to local format when they load
-  useEffect(() => {
-    if (!selectedScreenId) {
-      setIsLoadingHistory(false);
-      return;
-    }
-
-    if (convexMessages === undefined) {
-      setIsLoadingHistory(true);
-      return;
-    }
-
-    setIsLoadingHistory(false);
-
-    if (convexMessages && convexMessages.length > 0) {
-      const formattedMessages: ChatMessage[] = convexMessages.map((msg) => ({
-        id: msg._id,
-        role: msg.role,
-        content: stripFilesSummary(msg.content),
-        timestamp: new Date(msg.createdAt),
-      }));
-      setLocalMessages(formattedMessages);
-    }
-  }, [convexMessages, selectedScreenId]);
-
-  const messages = localMessages;
-
-  const sendMessage = useCallback(
-    async (messageContent: string) => {
-      const content = messageContent.trim();
-      if (!content || isLoading) return;
-
-      if (!selectedScreenId || !projectId) {
-        setError({
-          message: "Please select a screen to chat with AI",
-          originalMessage: content,
-          canRetry: false,
-        });
-        return;
-      }
-
-      setError(null);
-
-      const userMessage: ChatMessage = {
-        id: `msg-${Date.now()}`,
-        role: "user",
-        content: content,
-        timestamp: new Date(),
-      };
-
-      setLocalMessages((prev) => [...prev, userMessage]);
-      setIsLoading(true);
-      setChatStatus("submitted");
-
-      try {
-        // Save user message to database first
-        await createMessage({
-          screenId: selectedScreenId as Id<"screens">,
-          role: "user",
-          content: content,
-        });
-
-        // Then trigger the AI workflow
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            message: content,
-            threadId,
-            screenId: selectedScreenId,
-            projectId,
-          }),
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          const errorMessage = data.error || "Failed to send message";
-          throw new Error(errorMessage);
-        }
-        setThreadId(data.threadId);
-        setChatStatus("streaming");
-
-        // Keep loading state while agent processes
-        await pollForResponse(data.eventId);
-      } catch (err) {
-        console.error("Chat error:", err);
-        const errorMessage =
-          err instanceof Error ? err.message : "An unexpected error occurred";
-
-        setError({
-          message: errorMessage,
-          originalMessage: content,
-          canRetry: true,
-        });
-
-        setLocalMessages((prev) => [
-          ...prev,
-          {
-            id: `msg-${Date.now()}`,
-            role: "assistant",
-            content: errorMessage,
-            timestamp: new Date(),
-            isError: true,
-          },
-        ]);
-        setIsLoading(false);
-        setChatStatus("error");
-      }
-    },
-    [isLoading, threadId, selectedScreenId, projectId, createMessage]
-  );
-
-  const retryLastMessage = useCallback(() => {
-    if (!error?.canRetry || !error.originalMessage) return;
-
-    setLocalMessages((prev) => {
-      const lastMessage = prev[prev.length - 1];
-      if (lastMessage?.isError) {
-        return prev.slice(0, -1);
-      }
-      return prev;
-    });
-
-    sendMessage(error.originalMessage);
-  }, [error, sendMessage]);
-
-  useEffect(() => {
-    setLocalMessages([]);
-    setThreadId(null);
-    setError(null);
-    setIsLoadingHistory(!!selectedScreenId);
-  }, [selectedScreenId]);
-
-  const pollForResponse = async (_eventId: string) => {
-    await new Promise((resolve) => setTimeout(resolve, 3000));
-    setIsLoading(false);
-    setChatStatus("ready");
-  };
+  // Use the streaming hook for chat functionality
+  const {
+    messages,
+    isLoading,
+    isLoadingHistory,
+    status,
+    statusText,
+    streamingSteps,
+    error,
+    sendMessage,
+    retryLastMessage,
+  } = useChatStreaming({
+    screenId: selectedScreenId,
+    projectId,
+  });
 
   const handleSuggestionClick = (suggestion: string) => {
     sendMessage(suggestion);
@@ -246,6 +83,9 @@ export function AISidebar({
     },
     [sendMessage]
   );
+
+  // Map streaming status to chat input status
+  const chatStatus: ChatInputStatus = status;
 
   if (!isOpen) return null;
 
@@ -297,7 +137,7 @@ export function AISidebar({
           >
             {isLoadingHistory ? (
               <LoadingHistory />
-            ) : messages.length === 0 ? (
+            ) : messages.length === 0 && !isLoading ? (
               <EmptyChat
                 hasScreen={!!selectedScreenId}
                 onSuggestionClick={handleSuggestionClick}
@@ -308,7 +148,12 @@ export function AISidebar({
                   {messages.map((msg) => (
                     <ChatMessageItem key={msg.id} message={msg} />
                   ))}
-                  {isLoading && <ThinkingIndicator />}
+                  {/* Show streaming indicator with step history when processing */}
+                  <StreamingIndicator
+                    statusText={statusText || "Processing..."}
+                    steps={streamingSteps}
+                    isVisible={isLoading}
+                  />
                   {error?.canRetry && !isLoading && (
                     <ErrorRetryButton onRetry={retryLastMessage} />
                   )}
@@ -353,17 +198,18 @@ export function AISidebar({
 function LoadingHistory() {
   return (
     <div className="flex flex-col items-center justify-center flex-1 py-12 px-4">
-      <div className="relative mb-4">
-        <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center border border-border/40">
-          <Loader size={24} className="text-muted-foreground/60" />
-        </div>
+      <div className="flex flex-col items-center gap-3">
+        <Image
+          src="/unitset_logo.svg"
+          alt="AI"
+          width={32}
+          height={32}
+          className="h-8 w-8"
+        />
+        <Shimmer className="text-sm" duration={1.5} spread={3}>
+          Loading conversation
+        </Shimmer>
       </div>
-      <h3 className="text-sm font-medium text-foreground mb-1">
-        Loading messages
-      </h3>
-      <p className="text-xs text-muted-foreground text-center max-w-[200px]">
-        Fetching your conversation history...
-      </p>
     </div>
   );
 }
@@ -441,6 +287,7 @@ function ChatMessageItem({ message }: { message: ChatMessage }) {
   const [copied, setCopied] = useState(false);
   const isUser = message.role === "user";
   const isError = message.isError;
+  const isStreaming = message.isStreaming;
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(message.content);
@@ -448,13 +295,14 @@ function ChatMessageItem({ message }: { message: ChatMessage }) {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // User message - right-aligned bubble with copy button
+  // User message - right-aligned glassy bubble with primary tint
   if (isUser) {
     return (
       <div className="flex flex-col items-end gap-1">
         <div className="group relative max-w-[85%]">
-          <div className="rounded-2xl rounded-br-sm px-3.5 py-2.5 text-sm leading-relaxed bg-primary text-primary-foreground">
-            {message.content}
+          <div className="relative rounded-[14px] rounded-br-[2px] px-3.5 py-2.5 text-sm leading-relaxed bg-primary/10 text-primary shadow-sm">
+            <div className="absolute inset-0 rounded-[14px] rounded-br-[2px] bg-linear-to-br from-white/5 to-transparent pointer-events-none" />
+            <span className="relative">{message.content}</span>
           </div>
           <button
             onClick={handleCopy}
@@ -496,10 +344,13 @@ function ChatMessageItem({ message }: { message: ChatMessage }) {
           )}
         >
           <MessageResponse>{message.content}</MessageResponse>
+          {isStreaming && (
+            <span className="inline-block w-2 h-4 ml-0.5 bg-foreground/70 animate-pulse" />
+          )}
         </div>
       </div>
-      {/* Credits and time footer */}
-      {!isError && (
+      {/* Credits and time footer - only show when not streaming */}
+      {!isError && !isStreaming && (
         <div className="flex items-center gap-2 ml-8.5 text-[10px] text-muted-foreground/60">
           <span className="flex items-center gap-1">
             <Sparkles className="h-2.5 w-2.5" />5 credits
@@ -508,26 +359,6 @@ function ChatMessageItem({ message }: { message: ChatMessage }) {
           <span>{formatMessageTime(message.timestamp)}</span>
         </div>
       )}
-    </div>
-  );
-}
-
-function ThinkingIndicator() {
-  return (
-    <div className="flex gap-2.5 items-start">
-      <div className="flex h-6 w-6 shrink-0 items-center justify-center mt-0.5">
-        <Image
-          src="/unitset_logo.svg"
-          alt="AI"
-          width={20}
-          height={20}
-          className="h-5 w-5"
-        />
-      </div>
-      <div className="flex items-center gap-2 py-1">
-        <Loader size={14} className="text-primary" />
-        <span className="text-sm text-muted-foreground">Thinking...</span>
-      </div>
     </div>
   );
 }
@@ -555,10 +386,33 @@ function ChatInput({
   onSubmit: (message: PromptInputMessage) => void;
   status: ChatInputStatus;
 }) {
+  const [inputValue, setInputValue] = useState("");
+
+  // Auto-capitalize first character
+  const handleInputChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      let value = e.target.value;
+      // Capitalize first character if it's a letter
+      if (value.length === 1 && /[a-z]/.test(value)) {
+        value = value.toUpperCase();
+      }
+      setInputValue(value);
+    },
+    []
+  );
+
+  const handleSubmit = useCallback(
+    (message: PromptInputMessage) => {
+      onSubmit(message);
+      setInputValue("");
+    },
+    [onSubmit]
+  );
+
   return (
     <div className="p-3 pt-2">
       <PromptInput
-        onSubmit={onSubmit}
+        onSubmit={handleSubmit}
         className={cn(
           "rounded-xl bg-muted/30 border border-border/40 transition-colors hover:bg-muted/40",
           "focus-within:bg-muted/50 focus-within:border-border/60",
@@ -569,6 +423,8 @@ function ChatInput({
           <PromptInputTextarea
             placeholder="Ask AI anything..."
             className="min-h-[36px] max-h-[120px] text-sm placeholder:text-muted-foreground/50 bg-transparent border-none shadow-none focus-visible:ring-0"
+            value={inputValue}
+            onChange={handleInputChange}
           />
         </PromptInputBody>
         <PromptInputFooter className="justify-end px-2 pb-2">
