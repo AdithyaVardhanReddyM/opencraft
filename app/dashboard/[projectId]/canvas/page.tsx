@@ -43,6 +43,7 @@ import { EllipsePreview } from "@/components/canvas/shapes/EllipsePreview";
 import { LinePreview } from "@/components/canvas/shapes/LinePreview";
 import { ArrowPreview } from "@/components/canvas/shapes/ArrowPreview";
 import { FreeDrawStrokePreview } from "@/components/canvas/shapes/StrokePreview";
+import { ScreenCursorPreview } from "@/components/canvas/shapes/ScreenCursorPreview";
 import { ShapePropertiesBar } from "@/components/canvas/ShapePropertiesBar";
 import {
   strokeWidthToPixels,
@@ -79,6 +80,7 @@ function CanvasContent({ projectId }: { projectId: string }) {
     resetZoom,
     zoomToFit,
     getSelectionBox,
+    getMouseWorldPosition,
     undo,
     redo,
   } = useInfiniteCanvas();
@@ -243,6 +245,10 @@ function CanvasContent({ projectId }: { projectId: string }) {
       const customEvent = e as CustomEvent<{ x: number; y: number }>;
       const { x, y } = customEvent.detail;
 
+      // Center the screen shape on the click position
+      const centeredX = x - SCREEN_DEFAULTS.width / 2;
+      const centeredY = y - SCREEN_DEFAULTS.height / 2;
+
       try {
         // Generate a unique shape ID first using nanoid
         const { nanoid } = await import("nanoid");
@@ -254,13 +260,13 @@ function CanvasContent({ projectId }: { projectId: string }) {
           projectId: projectId as Id<"projects">,
         });
 
-        // Add the screen shape to the canvas
+        // Add the screen shape to the canvas (centered on click position)
         // The shape factory will use the provided id instead of generating a new one
         dispatchShapes({
           type: "ADD_SCREEN",
           payload: {
-            x,
-            y,
+            x: centeredX,
+            y: centeredY,
             w: SCREEN_DEFAULTS.width,
             h: SCREEN_DEFAULTS.height,
             screenId: convexScreenId, // Convex document ID for linking
@@ -605,6 +611,14 @@ function CanvasContent({ projectId }: { projectId: string }) {
           {/* Render freedraw preview */}
           {freeDrawPoints.length > 0 && (
             <FreeDrawStrokePreview points={freeDrawPoints} />
+          )}
+
+          {/* Render screen cursor preview when screen tool is active */}
+          {activeTool === "screen" && (
+            <ScreenCursorPreview
+              worldX={getMouseWorldPosition().x}
+              worldY={getMouseWorldPosition().y}
+            />
           )}
 
           {/* Render selection box */}

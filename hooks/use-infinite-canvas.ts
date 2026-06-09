@@ -74,6 +74,7 @@ export interface UseInfiniteCanvasReturn {
   resetZoom: () => void;
   zoomToFit: () => void;
   getSelectionBox: () => { start: Point; current: Point } | null;
+  getMouseWorldPosition: () => Point;
 
   // History actions
   undo: () => void;
@@ -945,6 +946,11 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
     // Track mouse position for paste location
     mouseWorldPosRef.current = world;
 
+    // Trigger re-render for screen tool preview
+    if (currentTool === "screen") {
+      requestRender();
+    }
+
     if (viewport.mode === "panning" || viewport.mode === "shiftPanning") {
       schedulePanMove(local);
       return;
@@ -1301,6 +1307,8 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
   const getSelectionBox = (): { start: Point; current: Point } | null =>
     selectionBoxRef.current;
 
+  const getMouseWorldPosition = (): Point => mouseWorldPosRef.current;
+
   const undo = (): void => {
     dispatchShapes({ type: "UNDO" });
   };
@@ -1335,6 +1343,7 @@ export function useInfiniteCanvas(): UseInfiniteCanvasReturn {
     resetZoom,
     zoomToFit,
     getSelectionBox,
+    getMouseWorldPosition,
     undo,
     redo,
   };
