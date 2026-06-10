@@ -545,51 +545,181 @@ export function cssToTailwind(styles: StyleChanges): string[] {
 // ============================================================================
 
 /**
- * Update className in JSX/TSX source code with new Tailwind classes.
- * Preserves existing classes that don't conflict with new ones.
+ * Extract class prefixes from Tailwind classes for conflict detection
  */
-export function updateElementClassName(
-  sourceCode: string,
-  elementPath: string,
-  newClasses: string[]
-): string {
-  // This is a simplified implementation
-  // A full implementation would use an AST parser like @babel/parser
-
-  // For now, we'll use regex to find and update className
-  // This handles the most common cases
-
-  // Extract the class prefix from new classes to identify conflicts
-  const newPrefixes = new Set(
-    newClasses.map((cls) => {
+function extractClassPrefixes(classes: string[]): Set<string> {
+  return new Set(
+    classes.map((cls) => {
       // Extract prefix (e.g., "text" from "text-lg", "p" from "p-4")
       const match = cls.match(/^([a-z]+)-/);
       return match ? match[1] : cls;
     })
   );
+}
 
-  // Find className attribute in the source
-  // This regex handles: className="...", className='...', className={`...`}
-  const classNameRegex = /className\s*=\s*(?:"([^"]*)"|'([^']*)'|{`([^`]*)`})/g;
+/**
+ * Find the element in source code by selector and return its position
+ * Returns the position of the element's opening tag
+ */
+function findElementBySelector(
+  sourceCode: string,
+  selector: string
+): { start: number; end: number } | null {
+  // Handle ID selector: #myId
+  if (selector.startsWith("#")) {
+    const id = selector.slice(1);
+    // Match id="value" or id={'value'} or id={`value`}
+    const idRegex = new RegExp(
+      `id\\s*=\\s*(?:"${escapeRegexChars(id)}"|'${escapeRegexChars(
+        id
+      )}'|\\{['"\`]${escapeRegexChars(id)}['"\`]\\})`,
+      "g"
+    );
+    const match = idRegex.exec(sourceCode);
+    if (match) {
+      // Find the start of the element (look backwards for <)
+      let start = match.index;
+      while (start > 0 && sourceCode[start] !== "<") {
+        start--;
+      }
+      // Find the end of the opening tag
+      let end = match.index + match[0].length;
+      while (end < sourceCode.length && sourceCode[end] !== ">") {
+        end++;
+      }
+      return { start, end: end + 1 };
+    }
+  }
 
-  let result = sourceCode;
-  let match;
+  // Handle data attribute selector: [data-testid="value"]
+  const dataAttrMatch = selector.match(/\[data-(\w+)="([^"]+)"\]/);
+  if (dataAttrMatch) {
+    const [, attrName, attrValue] = dataAttrMatch;
+    const attrRegex = new RegExp(
+      `data-${attrName}\\s*=\\s*(?:"${escapeRegexChars(
+        attrValue
+      )}"|'${escapeRegexChars(attrValue)}'|\\{['"\`]${escapeRegexChars(
+        attrValue
+      )}['"\`]\\})`,
+      "g"
+    );
+    const match = attrRegex.exec(sourceCode);
+    if (match) {
+      let start = match.index;
+      while (start > 0 && sourceCode[start] !== "<") {
+        start--;
+      }
+      let end = match.index + match[0].length;
+      while (end < sourceCode.length && sourceCode[end] !== ">") {
+        end++;
+      }
+      return { start, end: end + 1 };
+    }
+  }
 
-  while ((match = classNameRegex.exec(sourceCode)) !== null) {
+  return null;
+}
+
+/**
+ * Escape special regex characters
+ */
+function escapeRegexChars(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Update className in JSX/TSX source code with new Tailwind classes.
+ * Preserves existing classes that don't conflict with new ones.
+ *
+ * @param sourceCode - The source code to modify
+ * @param elementSelector - CSS selector or element path to identify the element
+ * @param newClasses - Array of new Tailwind classes to add
+ */
+export function updateElementClassName(
+  sourceCode: string,
+  elementSelector: string,
+  newClasses: string[]
+): string {
+  const newPrefixes = extractClassPrefixes(newClasses);
+
+  // Try to find element by unique selector first
+  const elementPos = findElementBySelector(sourceCode, elementSelector);
+
+  if (elementPos) {
+    // Found element by unique selector - update only this element
+    const elementTag = sourceCode.slice(elementPos.start, elementPos.end);
+
+    // Find className in this specific element
+    const classNameRegex =
+      /className\s*=\s*(?:"([^"]*)"|'([^']*)'|{`([^`]*)`})/;
+    const match = classNameRegex.exec(elementTag);
+
+    if (match) {
+      const existingClasses = (match[1] || match[2] || match[3] || "")
+        .split(/\s+/)
+        .filter(Boolean);
+
+      // Filter out conflicting classes
+      const filteredClasses = existingClasses.filter((cls) => {
+        const prefix = cls.match(/^([a-z]+)-/)?.[1] || cls;
+        return !newPrefixes.has(prefix);
+      });
+
+      // Combine filtered existing classes with new classes
+      const combinedClasses = [...filteredClasses, ...newClasses].join(" ");
+
+      // Determine quote style
+      const fullMatch = match[0];
+      const quote = fullMatch.includes('"')
+        ? '"'
+        : fullMatch.includes("'")
+        ? "'"
+        : "`";
+      const newClassName =
+        quote === "`"
+          ? `className={\`${combinedClasses}\`}`
+          : `className=${quote}${combinedClasses}${quote}`;
+
+      // Replace only in this element
+      const updatedTag = elementTag.replace(fullMatch, newClassName);
+      return (
+        sourceCode.slice(0, elementPos.start) +
+        updatedTag +
+        sourceCode.slice(elementPos.end)
+      );
+    } else {
+      // No className found, add one before the closing >
+      const insertPos = elementPos.end - 1;
+      const newClassName = `className="${newClasses.join(" ")}"`;
+      return (
+        sourceCode.slice(0, insertPos) +
+        ` ${newClassName}` +
+        sourceCode.slice(insertPos)
+      );
+    }
+  }
+
+  // Fallback: Update first matching className (legacy behavior)
+  // This is less precise but maintains backward compatibility
+  console.warn(
+    "[style-mapper] Could not find element by selector, using fallback"
+  );
+
+  const classNameRegex = /className\s*=\s*(?:"([^"]*)"|'([^']*)'|{`([^`]*)`})/;
+  const match = classNameRegex.exec(sourceCode);
+
+  if (match) {
     const existingClasses = (match[1] || match[2] || match[3] || "")
       .split(/\s+/)
       .filter(Boolean);
 
-    // Filter out conflicting classes
     const filteredClasses = existingClasses.filter((cls) => {
       const prefix = cls.match(/^([a-z]+)-/)?.[1] || cls;
       return !newPrefixes.has(prefix);
     });
 
-    // Combine filtered existing classes with new classes
     const combinedClasses = [...filteredClasses, ...newClasses].join(" ");
 
-    // Replace the className value
     const fullMatch = match[0];
     const quote = fullMatch.includes('"')
       ? '"'
@@ -601,10 +731,10 @@ export function updateElementClassName(
         ? `className={\`${combinedClasses}\`}`
         : `className=${quote}${combinedClasses}${quote}`;
 
-    result = result.replace(fullMatch, newClassName);
+    return sourceCode.replace(fullMatch, newClassName);
   }
 
-  return result;
+  return sourceCode;
 }
 
 /**

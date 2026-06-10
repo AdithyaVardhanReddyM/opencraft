@@ -19,6 +19,7 @@ export interface ComputedStylesInfo {
   fontFamily: string;
   fontSize: string;
   fontWeight: string;
+  fontStyle: string;
   lineHeight: string;
   letterSpacing: string;
   textAlign: string;
@@ -41,16 +42,32 @@ export interface ComputedStylesInfo {
   marginBottom: string;
   marginLeft: string;
   gap: string;
+  columnGap: string;
+  rowGap: string;
   flexDirection: string;
+  flexWrap: string;
   justifyContent: string;
   alignItems: string;
 
   // Appearance
   backgroundColor: string;
+  backgroundImage: string;
   borderRadius: string;
+  borderTopLeftRadius: string;
+  borderTopRightRadius: string;
+  borderBottomLeftRadius: string;
+  borderBottomRightRadius: string;
   borderWidth: string;
+  borderTopWidth: string;
+  borderRightWidth: string;
+  borderBottomWidth: string;
+  borderLeftWidth: string;
   borderColor: string;
   borderStyle: string;
+  outlineWidth: string;
+  outlineColor: string;
+  outlineStyle: string;
+  outlineOffset: string;
   boxShadow: string;
   opacity: string;
 }
@@ -63,6 +80,7 @@ export const COMPUTED_STYLE_KEYS: (keyof ComputedStylesInfo)[] = [
   "fontFamily",
   "fontSize",
   "fontWeight",
+  "fontStyle",
   "lineHeight",
   "letterSpacing",
   "textAlign",
@@ -84,15 +102,31 @@ export const COMPUTED_STYLE_KEYS: (keyof ComputedStylesInfo)[] = [
   "marginBottom",
   "marginLeft",
   "gap",
+  "columnGap",
+  "rowGap",
   "flexDirection",
+  "flexWrap",
   "justifyContent",
   "alignItems",
   // Appearance
   "backgroundColor",
+  "backgroundImage",
   "borderRadius",
+  "borderTopLeftRadius",
+  "borderTopRightRadius",
+  "borderBottomLeftRadius",
+  "borderBottomRightRadius",
   "borderWidth",
+  "borderTopWidth",
+  "borderRightWidth",
+  "borderBottomWidth",
+  "borderLeftWidth",
   "borderColor",
   "borderStyle",
+  "outlineWidth",
+  "outlineColor",
+  "outlineStyle",
+  "outlineOffset",
   "boxShadow",
   "opacity",
 ];
@@ -122,6 +156,7 @@ export interface HoveredElementInfo {
 export interface SelectedElementInfo {
   tagName: string;
   className: string;
+  id: string; // Element ID attribute
   computedStyles: ComputedStylesInfo;
   boundingRect: {
     x: number;
@@ -131,6 +166,100 @@ export interface SelectedElementInfo {
   };
   elementPath: string; // CSS selector path for identification
   sourceFile?: string; // Source file path if available
+  textContent?: string; // Text content for text elements
+  uniqueIdentifier: string; // Unique ID for targeting (id, data-attr, or generated)
+  siblingIndex: number; // Position among same-tag siblings
+  dataAttributes: Record<string, string>; // All data-* attributes
+}
+
+// ============================================================================
+// Element Categories
+// ============================================================================
+
+/**
+ * Category of an element for determining which property sections to display
+ */
+export type ElementCategory = "container" | "text" | "image" | "other";
+
+/**
+ * Text elements that should show Typography section
+ */
+export const TEXT_ELEMENTS = [
+  "h1",
+  "h2",
+  "h3",
+  "h4",
+  "h5",
+  "h6",
+  "p",
+  "span",
+  "label",
+  "a",
+  "strong",
+  "em",
+  "b",
+  "i",
+  "small",
+  "mark",
+  "del",
+  "ins",
+  "sub",
+  "sup",
+] as const;
+
+/**
+ * Container elements that should show Layout section with flex options
+ */
+export const CONTAINER_ELEMENTS = [
+  "div",
+  "section",
+  "article",
+  "main",
+  "header",
+  "footer",
+  "nav",
+  "aside",
+  "ul",
+  "ol",
+  "li",
+  "form",
+  "fieldset",
+] as const;
+
+/**
+ * Determine the category of an element based on its tag name
+ */
+export function getElementCategory(tagName: string): ElementCategory {
+  const normalizedTag = tagName.toLowerCase();
+
+  if (normalizedTag === "img") return "image";
+  if ((TEXT_ELEMENTS as readonly string[]).includes(normalizedTag))
+    return "text";
+  if ((CONTAINER_ELEMENTS as readonly string[]).includes(normalizedTag))
+    return "container";
+
+  return "other";
+}
+
+/**
+ * Check if an element is a text element
+ */
+export function isTextElement(tagName: string): boolean {
+  return getElementCategory(tagName) === "text";
+}
+
+/**
+ * Check if an element is a container element
+ */
+export function isContainerElement(tagName: string): boolean {
+  return getElementCategory(tagName) === "container";
+}
+
+/**
+ * Check if an element is an image element
+ */
+export function isImageElement(tagName: string): boolean {
+  return getElementCategory(tagName) === "image";
 }
 
 // ============================================================================

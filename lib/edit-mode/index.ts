@@ -54,3 +54,14 @@ export {
   readSourceFile,
   writeSourceFile,
 } from "./sandbox-files";
+
+// Selector Generator
+export {
+  generateUniqueSelector,
+  validateSelectorUniqueness,
+  findBestSelector,
+  selectorToSourcePattern,
+  type UniqueSelector,
+  type SelectorConfidence,
+  type SelectorMethod,
+} from "./selector-generator";

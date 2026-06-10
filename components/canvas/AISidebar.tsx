@@ -109,7 +109,7 @@ export function AISidebar({
 
   return (
     <motion.div
-      className="pointer-events-auto fixed left-3 z-[60] flex flex-col"
+      className="pointer-events-auto fixed left-3 z-60 flex flex-col"
       style={{
         top: "60px",
         bottom: "12px",
@@ -126,7 +126,7 @@ export function AISidebar({
         opacity: { duration: 0.2 },
       }}
     >
-      <div className="flex flex-col h-full rounded-xl bg-background/95 backdrop-blur-xl shadow-2xl overflow-hidden">
+      <div className="flex flex-col h-full rounded-xl bg-background/95 backdrop-blur-xl shadow-2xl overflow-hidden scrollbar-thin">
         <Tabs
           value={activeTab}
           onValueChange={setActiveTab}
@@ -208,7 +208,6 @@ export function AISidebar({
               <EditModePanel
                 screenId={selectedScreenId}
                 sandboxId={sandboxId}
-                sandboxUrl={sandboxUrl}
               />
             </EditModeProvider>
           </TabsContent>

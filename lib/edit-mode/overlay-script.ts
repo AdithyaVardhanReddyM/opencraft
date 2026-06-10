@@ -207,6 +207,7 @@ export const OVERLAY_SCRIPT = `
       fontFamily: computed.fontFamily,
       fontSize: computed.fontSize,
       fontWeight: computed.fontWeight,
+      fontStyle: computed.fontStyle,
       lineHeight: computed.lineHeight,
       letterSpacing: computed.letterSpacing,
       textAlign: computed.textAlign,
@@ -230,18 +231,86 @@ export const OVERLAY_SCRIPT = `
       marginLeft: computed.marginLeft,
       gap: computed.gap,
       flexDirection: computed.flexDirection,
+      flexWrap: computed.flexWrap,
       justifyContent: computed.justifyContent,
       alignItems: computed.alignItems,
 
       // Appearance
       backgroundColor: computed.backgroundColor,
+      backgroundImage: computed.backgroundImage,
       borderRadius: computed.borderRadius,
+      borderTopLeftRadius: computed.borderTopLeftRadius,
+      borderTopRightRadius: computed.borderTopRightRadius,
+      borderBottomLeftRadius: computed.borderBottomLeftRadius,
+      borderBottomRightRadius: computed.borderBottomRightRadius,
       borderWidth: computed.borderWidth,
+      borderTopWidth: computed.borderTopWidth,
+      borderRightWidth: computed.borderRightWidth,
+      borderBottomWidth: computed.borderBottomWidth,
+      borderLeftWidth: computed.borderLeftWidth,
       borderColor: computed.borderColor,
       borderStyle: computed.borderStyle,
+      outlineWidth: computed.outlineWidth,
+      outlineColor: computed.outlineColor,
+      outlineStyle: computed.outlineStyle,
+      outlineOffset: computed.outlineOffset,
       boxShadow: computed.boxShadow,
       opacity: computed.opacity,
     };
+  }
+
+  // ============================================================================
+  // Unique Identifier Generation
+  // ============================================================================
+
+  function getDataAttributes(element) {
+    const dataAttrs = {};
+    if (element.dataset) {
+      for (const key in element.dataset) {
+        if (element.dataset.hasOwnProperty(key) && !key.startsWith('__')) {
+          dataAttrs[key] = element.dataset[key];
+        }
+      }
+    }
+    return dataAttrs;
+  }
+
+  function getSiblingIndex(element) {
+    if (!element.parentElement) return 0;
+    const siblings = Array.from(element.parentElement.children).filter(
+      child => child.tagName === element.tagName
+    );
+    return siblings.indexOf(element);
+  }
+
+  function generateUniqueIdentifier(element) {
+    // Priority 1: Use ID if available
+    if (element.id) {
+      return 'id:' + element.id;
+    }
+    
+    // Priority 2: Use data-testid or data-id if available
+    if (element.dataset?.testid) {
+      return 'data-testid:' + element.dataset.testid;
+    }
+    if (element.dataset?.id) {
+      return 'data-id:' + element.dataset.id;
+    }
+    
+    // Priority 3: Generate path-based identifier
+    const path = getElementPath(element);
+    const siblingIdx = getSiblingIndex(element);
+    return 'path:' + path + ':' + siblingIdx;
+  }
+
+  function getTextContent(element) {
+    // Only get text content for text elements
+    const textTags = ['H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'P', 'SPAN', 'LABEL', 'A', 'STRONG', 'EM', 'B', 'I'];
+    if (!textTags.includes(element.tagName)) return undefined;
+    
+    // Get direct text content, limit to 200 chars
+    const text = element.textContent || '';
+    return text.length > 200 ? text.substring(0, 200) + '...' : text;
   }
 
   // ============================================================================
@@ -253,7 +322,8 @@ export const OVERLAY_SCRIPT = `
 
     return {
       tagName: element.tagName.toLowerCase(),
-      className: element.className || '',
+      className: typeof element.className === 'string' ? element.className : '',
+      id: element.id || '',
       computedStyles: getComputedStylesInfo(element),
       boundingRect: {
         x: rect.x,
@@ -263,6 +333,10 @@ export const OVERLAY_SCRIPT = `
       },
       elementPath: getElementPath(element),
       sourceFile: element.dataset?.sourceFile || undefined,
+      textContent: getTextContent(element),
+      uniqueIdentifier: generateUniqueIdentifier(element),
+      siblingIndex: getSiblingIndex(element),
+      dataAttributes: getDataAttributes(element),
     };
   }
 

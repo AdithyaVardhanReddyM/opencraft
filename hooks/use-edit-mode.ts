@@ -13,7 +13,11 @@ import {
   cssToTailwind,
   updateElementClassName,
 } from "@/lib/edit-mode/style-mapper";
-import { writeSourceFile, readSourceFile } from "@/lib/edit-mode";
+import {
+  writeSourceFile,
+  readSourceFile,
+  generateUniqueSelector,
+} from "@/lib/edit-mode";
 
 // ======================
 // Types
@@ -368,21 +372,52 @@ export function useEditMode({
         return;
       }
 
+      // Generate unique selector for the element
+      const uniqueSelector = generateUniqueSelector(selectedElement);
+      console.log(
+        "[useEditMode] Generated unique selector:",
+        uniqueSelector.selector,
+        "confidence:",
+        uniqueSelector.confidence,
+        "method:",
+        uniqueSelector.method
+      );
+
       // Determine source file path
       const sourceFilePath = selectedElement.sourceFile || "app/page.tsx";
 
       // Read the source file
       const sourceContent = await readSourceFile(sandboxId, sourceFilePath);
 
-      // Update the className in the source
+      // Update the className in the source using the unique selector
+      // For high-confidence selectors (ID or data-attr), we can target more precisely
       const updatedContent = updateElementClassName(
         sourceContent,
-        selectedElement.elementPath,
+        uniqueSelector.method === "id" || uniqueSelector.method === "data-attr"
+          ? uniqueSelector.selector
+          : selectedElement.elementPath,
         tailwindClasses
       );
 
       // Write back to sandbox
       await writeSourceFile(sandboxId, sourceFilePath, updatedContent);
+
+      // Verify the changes were written correctly
+      try {
+        const verifyContent = await readSourceFile(sandboxId, sourceFilePath);
+        const hasChanges = tailwindClasses.some((cls) =>
+          verifyContent.includes(cls)
+        );
+        if (!hasChanges) {
+          console.warn(
+            "[useEditMode] Verification warning: Changes may not have been persisted correctly"
+          );
+        } else {
+          console.log("[useEditMode] Changes verified successfully");
+        }
+      } catch (verifyError) {
+        console.warn("[useEditMode] Could not verify changes:", verifyError);
+      }
 
       // Clear pending changes on success
       setPendingChanges(null);

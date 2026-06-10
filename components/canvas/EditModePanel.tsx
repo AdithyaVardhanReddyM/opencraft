@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { MousePointer2, AlertCircle, Loader2 } from "lucide-react";
 import { useEditModeContext } from "@/contexts/EditModeContext";
 import { ElementPropertiesPanel } from "./ElementPropertiesPanel";
-import { cn } from "@/lib/utils";
 
 // ============================================================================
 // Types
@@ -92,39 +91,10 @@ function LoadingState() {
 }
 
 // ============================================================================
-// Edit Mode Indicator
-// ============================================================================
-
-function EditModeIndicator({ isActive }: { isActive: boolean }) {
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-full transition-colors",
-        isActive
-          ? "bg-primary/10 text-primary border border-primary/20"
-          : "bg-muted/30 text-muted-foreground border border-border/40"
-      )}
-    >
-      <span
-        className={cn(
-          "w-2 h-2 rounded-full",
-          isActive ? "bg-primary animate-pulse" : "bg-muted-foreground/50"
-        )}
-      />
-      {isActive ? "Edit Mode Active" : "Edit Mode"}
-    </div>
-  );
-}
-
-// ============================================================================
 // Main Component
 // ============================================================================
 
-export function EditModePanel({
-  screenId,
-  sandboxId,
-  sandboxUrl,
-}: EditModePanelProps) {
+export function EditModePanel({ screenId, sandboxId }: EditModePanelProps) {
   const {
     isEditMode,
     selectedElement,
@@ -161,11 +131,6 @@ export function EditModePanel({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-center px-3 py-2 border-b border-border/40">
-        <EditModeIndicator isActive={isEditMode} />
-      </div>
-
       {/* Content */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {saveError && !selectedElement ? (
