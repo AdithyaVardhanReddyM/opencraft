@@ -5,14 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   ArrowRight,
   ArrowUpRight,
-  Layers,
   Layout,
-  Zap,
-  Sparkles,
-  CreditCard,
-  Gem,
-  History,
-  CheckCircle,
   Headphones,
   Wallet,
   MessageCircle,
@@ -96,13 +89,13 @@ export default function Page() {
             Features
           </Link>
           <Link
-            href="#how-it-works"
+            href="#philosophy"
             className="text-xs font-medium text-white/50 hover:text-white transition-colors"
           >
-            How it Works
+            Philosophy
           </Link>
           <Link
-            href="#pricing"
+            href="/pricing"
             className="text-xs font-medium text-white/50 hover:text-white transition-colors"
           >
             Pricing
@@ -115,7 +108,7 @@ export default function Page() {
           size="sm"
           className="flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors group text-xs font-semibold rounded-full py-2 px-4 items-center"
         >
-          <Link href="/sign-up">
+          <Link href="/dashboard">
             Get Started
             <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
@@ -149,9 +142,12 @@ export default function Page() {
 
           <div className="flex flex-col sm:flex-row gap-5 items-center justify-center">
             {/* Animated Shiny CTA Button */}
-            <button className="landing-shiny-cta focus:outline-hidden">
+            <Link
+              href="/dashboard"
+              className="landing-shiny-cta focus:outline-hidden"
+            >
               <span>Start Designing</span>
-            </button>
+            </Link>
 
             {/* Secondary Button */}
             <button className="hover:bg-white/10 hover:text-white transition-all flex text-sm font-medium text-slate-300 bg-white/5 rounded-full py-5 px-10 gap-2 items-center group landing-border-gradient">
@@ -191,293 +187,267 @@ export default function Page() {
       </main>
 
       {/* Features Section */}
-      <section className="flex flex-col overflow-hidden lg:px-12 z-10 bg-black/50 w-full border-white/5 border-t pt-32 px-6 pb-32 relative backdrop-blur-3xl items-center">
+      <section
+        id="features"
+        className="flex flex-col overflow-hidden lg:px-12 z-10 bg-black/50 w-full border-white/5 border-t pt-32 px-6 pb-32 relative backdrop-blur-3xl items-center"
+      >
         {/* Clean Background Line */}
         <div className="absolute top-0 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
         {/* Section Header */}
-        <div className="flex flex-col items-center text-center max-w-3xl mb-24 relative z-10">
-          <h2 className="text-5xl md:text-6xl lg:text-7xl font-serif font-medium tracking-tight text-white mb-8">
-            Design intelligence
-            <span className="text-white/60"> made effortless.</span>
+        <div className="flex flex-col items-center text-center max-w-4xl mb-20 relative z-10">
+          <span className="text-xs font-mono text-primary/80 uppercase tracking-[0.3em] mb-6">
+            Everything you need
+          </span>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-medium tracking-tight text-white mb-6 leading-[1.1]">
+            From <span className="italic text-white/70">sketch</span> to{" "}
+            <span className="text-primary">ship</span>,
+            <br className="hidden sm:block" /> all in one place.
           </h2>
-
-          <p className="text-xl text-white/60 leading-relaxed max-w-2xl font-light tracking-tight">
-            Streamline your design workflow with AI-driven tools designed to
-            simplify, automate, and enhance your creative process.
+          <p className="text-lg text-white/50 leading-relaxed max-w-xl font-light">
+            Your complete design-to-code workflow — draw, generate, edit, and
+            export.
           </p>
         </div>
 
-        {/* Feature Cards Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 z-10 w-full max-w-7xl relative">
-          {/* Card 1: AI Generation */}
+        {/* Bento Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-4 z-10 w-full max-w-7xl relative auto-rows-[minmax(200px,auto)]">
+          {/* Card 1: Infinite Canvas - Large Featured */}
           <div
             ref={addSpotlightRef}
-            className="landing-spotlight-card group relative flex flex-col p-10 rounded-[32px] border border-white/10 bg-white/[0.02] overflow-hidden transition-all duration-500"
+            className="landing-spotlight-card group relative flex flex-col lg:col-span-7 lg:row-span-2 rounded-[24px] border border-white/10 bg-white/[0.02] overflow-hidden transition-all duration-500"
           >
             <div className="landing-spotlight-bg pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="landing-spotlight-border pointer-events-none absolute inset-0 rounded-[32px] border border-primary/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="landing-spotlight-border pointer-events-none absolute inset-0 rounded-[24px] border border-primary/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-            <h3 className="text-2xl font-semibold tracking-tight text-white mb-4 relative z-10">
-              AI-Driven Generation
-            </h3>
-            <p className="text-base text-white/50 leading-relaxed mb-12 relative z-10 font-light">
-              Describe your interface in plain English. Watch as unit {`{set}`}{" "}
-              generates fully editable, layer-based designs in seconds.
-            </p>
-
-            {/* Visual: Chat/Terminal UI */}
-            <div className="relative z-10 mt-auto w-full h-72 rounded-2xl border border-white/10 bg-[#0A0A0A] overflow-hidden flex flex-col shadow-2xl">
-              <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between bg-white/5">
-                <div className="flex items-center gap-2 opacity-50">
-                  <div className="w-2 h-2 rounded-full bg-white/40" />
-                  <div className="w-2 h-2 rounded-full bg-white/40" />
-                </div>
-                <span className="text-xs text-white/30 font-mono">
-                  UNIT_SET v1.0
-                </span>
-              </div>
-              <div className="p-6 flex flex-col gap-5 relative h-full">
-                {/* User Message */}
-                <div className="self-end max-w-[90%] bg-white/10 backdrop-blur-sm rounded-2xl rounded-tr-sm p-4 border border-white/5">
-                  <p className="text-xs text-white/90 font-light leading-relaxed">
-                    Create a{" "}
-                    <span className="text-white font-medium">
-                      modern dashboard
-                    </span>{" "}
-                    with <span className="text-primary">dark theme</span>.
-                  </p>
-                </div>
-
-                {/* System Message */}
-                <div className="self-start max-w-[90%] bg-white/[0.03] backdrop-blur-md rounded-2xl rounded-tl-sm p-5 border border-white/10 relative overflow-hidden group-hover:border-primary/20 transition-colors duration-500">
-                  <div className="flex items-center gap-2 mb-3 text-primary font-mono text-[10px] uppercase tracking-wider">
-                    <Sparkles className="h-3.5 w-3.5" /> AI Assistant
-                  </div>
-                  <p className="mb-4 text-xs text-white/80 font-light">
-                    Generating dashboard layout with sidebar navigation...
-                  </p>
-
-                  {/* Progress Bar */}
-                  <div className="w-full bg-black/40 rounded-full h-1.5 mb-2 overflow-hidden">
-                    <div className="bg-primary h-full w-[85%] animate-pulse" />
-                  </div>
-                  <div className="flex justify-between text-[10px] text-primary/60 font-mono">
-                    <span>GENERATING</span>
-                    <span>85%</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 2: Smart Layouts (Featured) */}
-          <div
-            ref={addSpotlightRef}
-            className="landing-spotlight-card relative flex flex-col p-[1px] rounded-[32px] overflow-hidden lg:-mt-8 lg:mb-8 z-20 group"
-          >
-            <div className="absolute inset-0 bg-gradient-to-b from-white/10 via-transparent to-transparent rounded-[32px]" />
-            <div className="absolute inset-0 bg-[#050505] rounded-[31px] m-[1px] overflow-hidden">
-              <div className="landing-spotlight-bg pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-0" />
-            </div>
-            <div className="landing-spotlight-border pointer-events-none absolute inset-0 rounded-[32px] border border-primary/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-50" />
-
-            <div className="relative z-10 flex flex-col h-full p-10 group">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="relative">
-                  <div className="absolute inset-0 bg-primary/20 blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                  <Zap className="h-6 w-6 text-primary relative z-10" />
-                </div>
-                <h3 className="text-2xl font-semibold tracking-tight text-white group-hover:text-white transition-colors">
-                  Smart Layouts
-                </h3>
-              </div>
-              <p className="text-base text-white/50 leading-relaxed mb-12 font-light group-hover:text-white/70 transition-colors">
-                Responsive by default. Elements automatically adjust as you
-                resize, just like you&apos;d expect from a modern design tool.
+            {/* Content - Top */}
+            <div className="p-8 pb-4 relative z-10">
+              <span className="inline-block text-[10px] font-mono text-primary/70 uppercase tracking-widest mb-3">
+                Core Feature
+              </span>
+              <h3 className="text-2xl md:text-3xl font-serif font-medium tracking-tight text-white mb-2">
+                Infinite Canvas
+              </h3>
+              <p className="text-sm text-white/40 leading-relaxed font-light max-w-md">
+                Sketch wireframes, brainstorm ideas, and draw shapes freely.
+                Pan, zoom, and organize your thoughts on a limitless workspace.
               </p>
+            </div>
 
-              {/* Visual: Orbit Animation */}
-              <div className="mt-auto relative w-full h-80 flex items-center justify-center">
-                {/* Sonar Rings */}
-                <div
-                  className="absolute w-96 h-96 border border-primary/5 rounded-full animate-ping opacity-10"
-                  style={{ animationDuration: "4s" }}
-                />
-                <div
-                  className="absolute w-80 h-80 border border-white/5 rounded-full animate-ping opacity-20"
-                  style={{ animationDuration: "3s", animationDelay: "0.7s" }}
-                />
-
-                {/* Rotating Rings */}
-                <div
-                  className="absolute w-64 h-64 border border-white/5 rounded-full landing-animate-spin-slow"
-                  style={{ animationDuration: "40s" }}
-                >
-                  <div className="absolute top-1/2 -right-1 w-2 h-2 bg-white/10 rounded-full" />
-                  <div className="absolute top-1/2 -left-1 w-2 h-2 bg-white/10 rounded-full" />
-                </div>
-                <div
-                  className="absolute w-60 h-60 border border-white/10 rounded-full landing-animate-spin-slow"
-                  style={{ animationDuration: "30s" }}
-                />
-                <div
-                  className="absolute w-44 h-44 border border-white/5 rounded-full landing-animate-spin-slow-reverse border-dashed"
-                  style={{ animationDuration: "20s" }}
-                />
-                <div
-                  className="absolute w-36 h-36 border border-primary/20 rounded-full landing-animate-spin-slow opacity-0 group-hover:opacity-100 transition-opacity duration-700"
-                  style={{ animationDuration: "15s" }}
-                >
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-primary mt-[-3px] rounded-full shadow-[0_0_10px_rgba(var(--primary),1)]" />
-                </div>
-
-                {/* Orbiting Elements */}
-                <div
-                  className="absolute w-60 h-60 landing-animate-spin-slow"
-                  style={{ animationDuration: "30s" }}
-                >
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#050505] p-2.5 rounded-full border border-white/10 group-hover:border-primary/30 group-hover:shadow-[0_0_20px_rgba(var(--primary),0.1)] transition-all duration-500">
-                    <Gem className="h-4 w-4 text-white/40 group-hover:text-primary transition-colors" />
-                  </div>
-                  <div className="absolute bottom-0 right-1/2 translate-x-1/2 translate-y-1/2 bg-[#050505] p-2.5 rounded-full border border-white/10 group-hover:border-primary/30 group-hover:shadow-[0_0_20px_rgba(var(--primary),0.1)] transition-all duration-500">
-                    <CreditCard className="h-4 w-4 text-white/40 group-hover:text-primary transition-colors" />
-                  </div>
-                </div>
-
-                {/* Central Hub */}
-                <div className="z-10 flex group-hover:border-primary/40 transition-colors duration-500 bg-[#0F110E] w-24 h-24 border-white/10 border rounded-3xl relative items-center justify-center overflow-hidden shadow-2xl">
-                  <Layers className="h-8 w-8 text-white relative z-20 group-hover:text-primary transition-colors duration-500" />
-                  <div className="animate-pulse bg-gradient-to-tr from-transparent via-primary/10 to-transparent absolute inset-0 z-10" />
-                  <div
-                    className="absolute inset-0 opacity-20 z-0"
-                    style={{
-                      backgroundImage:
-                        "radial-gradient(#fff 0.5px, transparent 0.5px)",
-                      backgroundSize: "18px 18px",
-                    }}
-                  />
-                </div>
-
-                <div className="absolute bottom-4 flex flex-col items-center">
-                  <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/5 group-hover:border-primary/20 transition-colors">
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary" />
-                    </span>
-                    <div className="text-[10px] text-white/40 font-mono tracking-widest uppercase group-hover:text-white/70 transition-colors">
-                      System Active
-                    </div>
-                  </div>
-                </div>
-              </div>
+            {/* Image Container - Bottom */}
+            <div className="relative z-10 flex-1 min-h-[280px] overflow-hidden mt-auto">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/feature_1.png"
+                alt="Infinite Canvas for wireframing"
+                className="w-full h-full object-cover object-top group-hover:scale-[1.02] transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
             </div>
           </div>
 
-          {/* Card 3: Real-time Collaboration */}
+          {/* Card 2: AI Chat Generation - Tall Right */}
           <div
             ref={addSpotlightRef}
-            className="landing-spotlight-card group relative flex flex-col p-10 rounded-[32px] border border-white/10 bg-white/[0.02] overflow-hidden transition-all duration-500"
+            className="landing-spotlight-card group relative flex flex-col lg:col-span-5 rounded-[24px] border border-white/10 bg-white/[0.02] overflow-hidden transition-all duration-500"
           >
             <div className="landing-spotlight-bg pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <div className="landing-spotlight-border pointer-events-none absolute inset-0 rounded-[32px] border border-primary/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="landing-spotlight-border pointer-events-none absolute inset-0 rounded-[24px] border border-primary/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
-            <h3 className="text-2xl font-semibold tracking-tight text-white mb-4 relative z-10">
-              Real-time Collaboration
-            </h3>
-            <p className="text-base text-white/50 leading-relaxed mb-12 relative z-10 font-light">
-              Work with your team in real-time. See cursors, leave comments, and
-              iterate together on the infinite canvas.
-            </p>
+            {/* Image */}
+            <div className="relative z-10 w-full h-48 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/feature_2.png"
+                alt="AI-powered component generation"
+                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-transparent to-transparent opacity-80" />
+            </div>
 
-            {/* Visual: Dashboard UI */}
-            <div className="relative mt-auto w-full h-72 rounded-2xl border border-white/10 bg-[#0A0A0A] p-7 flex flex-col justify-center gap-6 shadow-2xl">
-              {/* Team Header */}
-              <div className="flex justify-between items-center pb-4 border-b border-white/5">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-none" />
-                  <span className="text-xs text-white/50 font-mono uppercase tracking-wider">
-                    Project_V2
-                  </span>
-                </div>
-                <div className="flex -space-x-2">
-                  <div className="w-7 h-7 rounded-full border border-[#0A0A0A] bg-white/10 flex items-center justify-center text-white/80 text-[10px] font-medium">
-                    JD
-                  </div>
-                  <div className="w-7 h-7 rounded-full border border-[#0A0A0A] bg-primary/20 flex items-center justify-center text-primary text-[10px] font-medium">
-                    AS
-                  </div>
-                  <div className="w-7 h-7 rounded-full border border-[#0A0A0A] bg-white/5 flex items-center justify-center text-[9px] text-white/40">
-                    +3
-                  </div>
-                </div>
-              </div>
-
-              {/* Progress Slider */}
-              <div className="relative py-1">
-                <div className="flex justify-between text-[10px] text-white/40 mb-2 font-mono uppercase">
-                  <span>Design Progress</span>
-                  <span className="text-primary">75% Complete</span>
-                </div>
-                <div className="w-full h-2 bg-white/10 rounded-full relative flex items-center">
-                  <div className="absolute left-0 h-full w-[75%] bg-white/80 rounded-full" />
-                  <div className="absolute left-[75%] w-4 h-4 bg-white rounded-full z-10 transform -translate-x-1/2 border-2 border-[#0A0A0A] cursor-grab" />
-                  <div className="absolute left-[75%] -top-9 -translate-x-1/2 bg-[#151515] border border-white/10 text-white text-[10px] px-2.5 py-1.5 rounded shadow-lg whitespace-nowrap animate-bounce">
-                    Editing...
-                    <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-[#151515] border-r border-b border-white/10 transform rotate-45" />
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-4 mt-2">
-                <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-white/5 border border-white/5 hover:bg-white/10 transition-colors cursor-pointer">
-                  <History className="h-3.5 w-3.5 text-white/40" />
-                  <span className="text-xs text-white/60 font-medium">
-                    History
-                  </span>
-                </div>
-                <div className="flex items-center justify-center gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 cursor-pointer hover:bg-primary/20 transition-colors">
-                  <CheckCircle className="h-3.5 w-3.5 text-primary" />
-                  <span className="text-xs text-primary font-medium">
-                    Approve
-                  </span>
-                </div>
-              </div>
+            {/* Content */}
+            <div className="p-6 relative z-10">
+              <h3 className="text-lg font-semibold tracking-tight text-white mb-2">
+                AI Chat Generation
+              </h3>
+              <p className="text-xs text-white/40 leading-relaxed font-light">
+                Describe your UI in plain English. Get production-ready
+                components with live preview.
+              </p>
             </div>
           </div>
-        </div>
 
-        {/* CTA Button */}
-        <div className="mt-24 relative z-10">
-          <button className="group relative px-9 py-4 rounded-full bg-white text-black font-semibold text-sm transition-all duration-300 hover:bg-[#e5e5e5] flex items-center gap-3 overflow-hidden tracking-tight">
-            <span className="relative z-10">Explore All Features</span>
-            <ArrowRight className="h-4 w-4 relative z-10 transition-transform duration-300 group-hover:translate-x-1" />
-            <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent z-0" />
-          </button>
+          {/* Card 3: Visual Editor - Small */}
+          <div
+            ref={addSpotlightRef}
+            className="landing-spotlight-card group relative flex flex-col lg:col-span-5 rounded-[24px] border border-white/10 bg-white/[0.02] overflow-hidden transition-all duration-500"
+          >
+            <div className="landing-spotlight-bg pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="landing-spotlight-border pointer-events-none absolute inset-0 rounded-[24px] border border-primary/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+            {/* Image */}
+            <div className="relative z-10 w-full h-48 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/feature_3.png"
+                alt="Professional visual editor"
+                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-transparent to-transparent opacity-80" />
+            </div>
+
+            {/* Content */}
+            <div className="p-6 relative z-10">
+              <h3 className="text-lg font-semibold tracking-tight text-white mb-2">
+                Visual Editor
+              </h3>
+              <p className="text-xs text-white/40 leading-relaxed font-light">
+                Edit components visually. Fine-tune styles without touching
+                code.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 4: Code Export - Wide */}
+          <div
+            ref={addSpotlightRef}
+            className="landing-spotlight-card group relative flex flex-col md:flex-row lg:col-span-8 rounded-[24px] border border-white/10 bg-white/[0.02] overflow-hidden transition-all duration-500"
+          >
+            <div className="landing-spotlight-bg pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="landing-spotlight-border pointer-events-none absolute inset-0 rounded-[24px] border border-primary/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+            {/* Content - Left */}
+            <div className="p-8 relative z-10 flex flex-col justify-center md:w-2/5">
+              <span className="inline-block text-[10px] font-mono text-white/30 uppercase tracking-widest mb-2">
+                Export
+              </span>
+              <h3 className="text-xl font-semibold tracking-tight text-white mb-3">
+                Ship to your <span className="text-primary">IDE</span>
+              </h3>
+              <p className="text-sm text-white/40 leading-relaxed font-light">
+                Export clean, production-ready code. React, Next.js, and more —
+                ready to ship.
+              </p>
+            </div>
+
+            {/* Image - Right */}
+            <div className="relative z-10 flex-1 min-h-[200px] md:min-h-0 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/feature_4.png"
+                alt="Export clean code to your IDE"
+                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#080808] via-transparent to-transparent opacity-60 hidden md:block" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-transparent to-transparent opacity-60 md:hidden" />
+            </div>
+          </div>
+
+          {/* Card 5: Frame to Design - Vertical */}
+          <div
+            ref={addSpotlightRef}
+            className="landing-spotlight-card group relative flex flex-col lg:col-span-4 lg:row-span-2 rounded-[24px] border border-white/10 bg-white/[0.02] overflow-hidden transition-all duration-500"
+          >
+            <div className="landing-spotlight-bg pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="landing-spotlight-border pointer-events-none absolute inset-0 rounded-[24px] border border-primary/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+            {/* Image - Full height background */}
+            <div className="absolute inset-0 z-0 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/feature_5.png"
+                alt="Frame to design generation"
+                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#050505] via-[#050505]/60 to-transparent" />
+            </div>
+
+            {/* Content - Bottom overlay */}
+            <div className="p-8 relative z-10 mt-auto">
+              <span className="inline-flex items-center gap-2 text-[10px] font-mono text-primary uppercase tracking-widest mb-3">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                AI Magic
+              </span>
+              <h3 className="text-xl font-semibold tracking-tight text-white mb-2">
+                Frame to Design
+              </h3>
+              <p className="text-sm text-white/50 leading-relaxed font-light">
+                Sketch a wireframe and let AI bring it to life. Transform rough
+                ideas into polished designs instantly.
+              </p>
+            </div>
+          </div>
+
+          {/* Card 6: Chrome Extension - Wide bottom */}
+          <div
+            ref={addSpotlightRef}
+            className="landing-spotlight-card group relative flex flex-col md:flex-row-reverse lg:col-span-8 rounded-[24px] border border-white/10 bg-white/[0.02] overflow-hidden transition-all duration-500"
+          >
+            <div className="landing-spotlight-bg pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <div className="landing-spotlight-border pointer-events-none absolute inset-0 rounded-[24px] border border-primary/50 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+            {/* Content - Right */}
+            <div className="p-8 relative z-10 flex flex-col justify-center md:w-1/2">
+              <span className="inline-block text-[10px] font-mono text-white/30 uppercase tracking-widest mb-2">
+                Chrome Extension
+              </span>
+              <h3 className="text-xl font-semibold tracking-tight text-white mb-3">
+                Remix <span className="italic font-serif font-normal">any</span>{" "}
+                component
+              </h3>
+              <p className="text-sm text-white/40 leading-relaxed font-light">
+                See a component you love? Capture and remix it into your own
+                customized version with our browser extension.
+              </p>
+            </div>
+
+            {/* Image - Left */}
+            <div className="relative z-10 flex-1 min-h-[200px] md:min-h-0 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/feature_6.png"
+                alt="Chrome extension for component remix"
+                className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-l from-[#080808] via-transparent to-transparent opacity-60 hidden md:block" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#080808] via-transparent to-transparent opacity-60 md:hidden" />
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Testimonial Section */}
-      <section className="overflow-hidden flex flex-col px-6 md:px-8 lg:px-12 z-10 bg-[#030303]/80 w-full border-white/5 border-t pt-32 pb-32 relative backdrop-blur-xl items-center">
+      {/* Philosophy Section */}
+      <section
+        id="philosophy"
+        className="overflow-hidden flex flex-col px-6 md:px-8 lg:px-12 z-10 bg-[#030303]/80 w-full border-white/5 border-t pt-32 pb-32 relative backdrop-blur-xl items-center"
+      >
         {/* Subtle Background Grid */}
         <div className="absolute inset-0 landing-grid-bg opacity-50 pointer-events-none" />
 
         <div className="max-w-7xl w-full relative z-10">
           {/* Header Group */}
-          <div className="flex flex-col gap-8 mb-24 max-w-5xl">
-            <span className="text-xs font-mono text-white/40 uppercase tracking-[0.2em] font-medium pl-1 flex items-center gap-3">
-              <span className="w-1 h-1 bg-primary rounded-full shadow-[0_0_10px_rgba(var(--primary),0.8)]" />
-              Built for Modern Designers
-            </span>
-
-            <h2 className="text-4xl md:text-5xl lg:text-7xl font-serif font-medium tracking-tight text-white leading-[1.1]">
-              The modern designer doesn&apos;t fit in a single tool —
-              <span className="text-white/50">
-                {" "}
-                they sketch, they iterate, they ship fast.
-              </span>{" "}
-              This platform was made for them.
+          <div className="flex flex-col gap-6 mb-20 max-w-5xl">
+            {/* <span className="text-xs font-mono text-primary/80 uppercase tracking-[0.3em]">
+              Our Philosophy
+            </span> */}
+            <h2 className="text-3xl md:text-4xl lg:text-6xl font-serif font-medium tracking-tight text-white leading-[1.15]">
+              Stop juggling between{" "}
+              <span className="line-through text-white/30 decoration-white/20">
+                Figma
+              </span>
+              ,{" "}
+              <span className="line-through text-white/30 decoration-white/20">
+                IDEs
+              </span>
+              , and{" "}
+              <span className="line-through text-white/30 decoration-white/20">
+                vibe coding tools
+              </span>
+              .
+              <br />
+              <span className="text-white/50 italic">
+                Let us handle the design.
+              </span>
             </h2>
           </div>
 
@@ -488,8 +458,8 @@ export default function Page() {
               <div className="relative w-full aspect-[3.5/4] rounded-[24px] overflow-hidden border border-white/10 bg-white/[0.02]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=1000&fit=crop&crop=face"
-                  alt="Designer Profile"
+                  src="./vibe_coder.png"
+                  alt="Vibe Coder"
                   className="w-full h-full object-cover grayscale mix-blend-luminosity opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-700 ease-out"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-[#030303] via-transparent to-transparent opacity-80" />
@@ -507,7 +477,7 @@ export default function Page() {
               </div>
             </div>
 
-            {/* Testimony & Actions Block */}
+            {/* Quote & Actions Block */}
             <div className="lg:col-span-8 flex flex-col justify-end h-full relative">
               {/* Quote */}
               <blockquote className="mb-12 relative">
@@ -519,10 +489,11 @@ export default function Page() {
                   <path d="M14.017 21L14.017 18C14.017 16.8954 14.9124 16 16.017 16H19.017C19.5693 16 20.017 15.5523 20.017 15V9C20.017 8.44772 19.5693 8 19.017 8H15.017C14.4647 8 14.017 8.44772 14.017 9V11C14.017 11.5523 13.5693 12 13.017 12H12.017V5H22.017V15C22.017 18.3137 19.3307 21 16.017 21H14.017ZM5.0166 21L5.0166 18C5.0166 16.8954 5.91203 16 7.0166 16H10.0166C10.5689 16 11.0166 15.5523 11.0166 15V9C11.0166 8.44772 10.5689 8 10.0166 8H6.0166C5.46432 8 5.0166 8.44772 5.0166 9V11C5.0166 11.5523 4.56889 12 4.0166 12H3.0166V5H13.0166V15C13.0166 18.3137 10.3303 21 7.0166 21H5.0166Z" />
                 </svg>
                 <p className="text-xl md:text-2xl lg:text-3xl text-white/80 font-light leading-relaxed tracking-tight">
-                  &quot;I used to juggle between Figma, code editors, and AI
-                  tools. This platform keeps it simple — I describe what I want
-                  and get production-ready designs without the cognitive
-                  load.&quot;
+                  All-in-one vibe coding tools try to do everything and end up
+                  generating AI slop. UnitSet focuses on{" "}
+                  <span className="text-primary font-medium">design</span> —
+                  your IDE handles the rest. Each tool should do one thing
+                  exceptionally well.
                 </p>
               </blockquote>
 
@@ -536,16 +507,19 @@ export default function Page() {
                 {/* Metric Pill */}
                 <div className="inline-flex items-center gap-3 px-4 py-2.5 rounded-full border border-white/10 bg-white/[0.02] hover:bg-white/[0.04] transition-colors group cursor-default">
                   <span className="text-[10px] md:text-xs text-white/50 font-mono uppercase tracking-wide group-hover:text-white/70 transition-colors">
-                    Design Speed Up <span className="text-primary">10x</span>{" "}
-                    since launch
+                    The right tool for the{" "}
+                    <span className="text-primary">right job</span>
                   </span>
                   <ArrowUpRight className="h-3 w-3 text-primary transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
                 </div>
 
                 {/* CTA Button */}
-                <button className="landing-shiny-cta group !px-7 !py-3">
+                <Link
+                  href="/dashboard"
+                  className="landing-shiny-cta group !px-7 !py-3"
+                >
                   <span className="text-sm font-medium">Start Designing</span>
-                </button>
+                </Link>
               </div>
             </div>
           </div>
@@ -559,137 +533,44 @@ export default function Page() {
 
         <div className="max-w-7xl w-full relative z-10">
           {/* Header Section */}
-          <div className="flex flex-col lg:flex-row justify-between lg:items-end gap-12 mb-20">
-            <div className="flex flex-col gap-6 max-w-3xl">
-              <div className="flex items-center gap-4">
-                <span className="flex items-center justify-center w-8 h-8 rounded-full border border-white/10 bg-white/5 text-xs font-mono text-white/50">
-                  03
-                </span>
-                <span className="text-xs font-mono text-primary/90 uppercase tracking-[0.2em]">
-                  Design Infrastructure
-                </span>
-              </div>
-
-              <h2 className="text-4xl md:text-5xl lg:text-6xl font-serif font-medium tracking-tight text-white leading-[1.1]">
-                Create & Export
-                <span className="text-white/40 italic">
-                  {" "}
-                  Production-Ready Code.
-                </span>
-              </h2>
-            </div>
-
-            <div className="max-w-sm pb-2">
-              <p className="text-white/50 text-sm leading-relaxed font-light">
-                Direct design-to-code pipeline with clean, semantic output.
-                Export to React, Vue, or vanilla HTML/CSS with zero friction.
-              </p>
-            </div>
+          <div className="w-full mb-20 overflow-hidden rounded-2xl border border-white/10">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/franken.svg"
+              alt="Design Infrastructure"
+              className="w-full h-auto block"
+              style={{
+                transform: "scale(1.02)",
+                transformOrigin: "center center",
+              }}
+            />
           </div>
 
           {/* Main Feature Card */}
           <div className="w-full rounded-[24px] border border-white/10 bg-[#080808] overflow-hidden flex flex-col lg:flex-row relative group">
-            {/* Left Column: Content */}
-            <div className="lg:w-1/2 p-8 md:p-12 lg:p-16 flex flex-col justify-center items-start z-10 relative bg-[#080808]">
-              <h3 className="text-3xl md:text-4xl font-serif font-medium text-white mb-6 tracking-tight">
-                Design, Generate & Ship Components.
-              </h3>
-              <p className="text-white/60 mb-10 leading-relaxed font-light max-w-md text-base">
-                Initialize your project and generate components across multiple
-                frameworks. One interface for design, code, and deployment.
-              </p>
-
-              <div className="flex flex-wrap gap-4 w-full sm:w-auto">
-                <Button className="px-8 py-3.5 bg-primary text-primary-foreground font-semibold text-sm rounded-full hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 min-w-[140px]">
-                  Get Started
-                </Button>
-                <Button
-                  variant="outline"
-                  className="px-8 py-3.5 border border-white/10 text-white font-medium text-sm rounded-full hover:bg-white/5 transition-colors flex items-center justify-center gap-2 min-w-[140px] bg-transparent"
-                >
-                  View Examples
-                </Button>
-              </div>
+            {/* Left Column: Image */}
+            <div className="lg:w-1/2 relative min-h-[280px] overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/anatomy.jpg"
+                alt="Project Anatomy"
+                className="w-full h-full object-cover"
+              />
             </div>
 
-            {/* Right Column: Technical Illustration */}
-            <div className="lg:w-1/2 bg-[#050505] relative min-h-[400px] border-t lg:border-t-0 lg:border-l border-white/5 overflow-hidden flex items-center justify-center">
-              <div
-                className="absolute inset-0 opacity-[0.03]"
-                style={{
-                  backgroundImage:
-                    "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)",
-                  backgroundSize: "48px 96px",
-                }}
-              />
-
-              <div className="relative w-full h-full flex items-center justify-center p-12">
-                <div className="relative w-72 h-56 transform hover:rotate-0 transition-transform duration-700 ease-out">
-                  {/* Background Panel */}
-                  <div className="absolute top-0 right-0 w-56 h-36 bg-[#0A0A0A] border border-white/10 rounded-xl shadow-2xl z-0 overflow-hidden">
-                    <div className="h-8 border-b border-white/5 flex items-center px-3 gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                      <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                    </div>
-                    <div className="p-4 grid grid-cols-2 gap-3">
-                      <div className="h-12 bg-white/5 rounded border border-white/5" />
-                      <div className="h-12 bg-white/5 rounded border border-white/5" />
-                    </div>
-                  </div>
-
-                  {/* Foreground Panel */}
-                  <div className="absolute bottom-4 left-4 w-44 h-32 bg-[#0F0F0F] border border-white/10 rounded-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,1)] z-10 flex flex-col overflow-hidden">
-                    <div className="flex justify-between items-center p-4 border-b border-white/5 bg-white/[0.01]">
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center">
-                          <svg
-                            className="w-2.5 h-2.5 text-black"
-                            viewBox="0 0 24 24"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="3"
-                          >
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        </div>
-                        <span className="text-[10px] font-mono text-white/60">
-                          Component
-                        </span>
-                      </div>
-                      <span className="text-[10px] font-mono text-primary">
-                        Ready
-                      </span>
-                    </div>
-                    <div className="p-4 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs text-white/40">Export</span>
-                        <span className="text-xs text-white font-mono">
-                          React
-                        </span>
-                      </div>
-                      <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden">
-                        <div className="w-2/3 h-full bg-primary" />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Floating Icon */}
-                  <div
-                    className="absolute -top-6 -left-6 w-12 h-12 bg-[#050505] border border-white/10 rounded-full flex items-center justify-center z-20 shadow-xl animate-bounce"
-                    style={{ animationDuration: "4s" }}
-                  >
-                    <svg
-                      className="w-5 h-5 text-white/80"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                    >
-                      <path d="M12 2v20M2 12h20" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
+            {/* Right Column: Text */}
+            <div className="lg:w-1/2 p-6 md:p-8 lg:p-10 flex flex-col justify-center items-start z-10 relative bg-[#080808] border-t lg:border-t-0 lg:border-l border-white/5">
+              <p className="text-white/80 text-base md:text-lg lg:text-xl leading-relaxed font-serif italic">
+                &ldquo;Our project is a technological chimera. We took a Canvas
+                Interface (for drawing), stitched it with a Chrome Extension,
+                grafted on some GenAI, and wired it all with Sandboxes. We
+                forced incompatible mediums—hand-drawn sketches, imported
+                website components, and raw text—to inhabit the same living
+                body. It is a weird, multi-headed beast that allows users to
+                imagine components, sketch and &apos;scavenge&apos; parts from
+                the web and bring them back to life, exactly like Dr.
+                Frankenstein assembling his creation.&rdquo;
+              </p>
             </div>
           </div>
         </div>
@@ -709,25 +590,6 @@ export default function Page() {
               Ready to transform your{" "}
               <span className="opacity-60 italic">design workflow?</span>
             </h2>
-
-            {/* Interaction Card */}
-            <Link
-              href="/sign-up"
-              className="group/card relative mt-4 w-full sm:w-80 h-36 bg-[#030303]/5 border border-[#030303]/10 rounded-2xl p-6 flex flex-col justify-between hover:bg-[#030303]/10 hover:border-[#030303]/20 hover:scale-[1.02] transition-all duration-300"
-            >
-              <div className="flex justify-between items-start">
-                <MessageCircle className="h-8 w-8 text-[#030303] opacity-80" />
-                <ArrowUpRight className="h-6 w-6 text-[#030303] opacity-40 group-hover/card:opacity-100 group-hover/card:translate-x-1 group-hover/card:-translate-y-1 transition-all" />
-              </div>
-              <div>
-                <span className="block text-[#030303] font-semibold text-lg tracking-tight">
-                  Start Free Trial
-                </span>
-                <span className="text-[#030303]/60 text-xs font-medium uppercase tracking-wider">
-                  No credit card required
-                </span>
-              </div>
-            </Link>
           </div>
 
           {/* Right Content */}
@@ -754,15 +616,13 @@ export default function Page() {
 
         <div className="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-12 lg:gap-8 relative z-10">
           {/* Brand Column */}
-          <div className="lg:col-span-3 flex flex-col gap-8">
-            <div className="flex items-center gap-3">
-              <div className="relative flex items-center justify-center w-10 h-10 bg-white/5 rounded-xl border border-white/10 shadow-[0_0_15px_rgba(var(--primary),0.15)]">
-                <Layout className="h-5 w-5 text-primary" />
-              </div>
-              <span className="font-serif font-medium text-2xl tracking-tight text-white">
-                unit {`{set}`}
-              </span>
-            </div>
+          <div className="lg:col-span-3 flex flex-col gap-8 items-start">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/unitset_fulllogo.svg"
+              alt="Unit Set"
+              className="h-6 w-auto"
+            />
             <p className="text-white/40 text-sm leading-relaxed max-w-[280px] font-light">
               Engineering the future of design. AI-powered, developer-friendly,
               and infinitely scalable.
@@ -932,12 +792,10 @@ export default function Page() {
         {/* Bottom Bar */}
         <div className="w-full max-w-7xl mt-20 pt-8 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-6 relative z-10">
           <span className="text-white/20 text-xs font-mono tracking-wide">
-            © 2024 Unit Set Technologies. All rights reserved.
+            © 2025 UnitSet Technologies. All rights reserved.
           </span>
           <div className="flex items-center gap-8">
-            <span className="text-white/20 text-xs font-mono border-l border-white/10 pl-8">
-              SOC2 Type II Compliant
-            </span>
+            <span className="text-white/20 text-xs font-mono border-l border-white/10 pl-8"></span>
           </div>
         </div>
       </footer>

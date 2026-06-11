@@ -1040,3 +1040,15 @@ html[data-scroll-behavior="smooth"] {
 .landing-button-shimmer:hover::after {
   animation: landing-button-shimmer 1.5s infinite;
 }
+
+/* Landing Page Hide Scrollbar */
+html:has(.landing-page),
+body:has(.landing-page) {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+html:has(.landing-page)::-webkit-scrollbar,
+body:has(.landing-page)::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
+}
