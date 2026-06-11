@@ -744,8 +744,36 @@ html[data-scroll-behavior="smooth"] {
   }
 }
 
+@property --landing-gradient-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@property --landing-gradient-angle-offset {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@property --landing-gradient-percent {
+  syntax: "<percentage>";
+  initial-value: 20%;
+  inherits: false;
+}
+
+@property --landing-gradient-shine {
+  syntax: "<color>";
+  initial-value: oklch(0.7 0.15 250);
+  inherits: false;
+}
+
 .landing-shiny-cta {
   --landing-gradient-angle: 0deg;
+  --landing-gradient-angle-offset: 0deg;
+  --landing-gradient-percent: 20%;
+  --landing-gradient-shine: oklch(var(--primary));
+  --shadow-size: 2px;
   position: relative;
   overflow: hidden;
   border-radius: 9999px;
@@ -756,23 +784,32 @@ html[data-scroll-behavior="smooth"] {
   color: #ffffff;
   background: linear-gradient(#030303, #030303) padding-box,
     conic-gradient(
-        from calc(var(--landing-gradient-angle) - 0deg),
+        from
+          calc(
+            var(--landing-gradient-angle) - var(--landing-gradient-angle-offset)
+          ),
         transparent 0%,
-        oklch(var(--primary) / 0.8) 5%,
-        oklch(var(--primary)) 15%,
-        oklch(var(--primary) / 0.8) 30%,
+        color-mix(in oklch, oklch(var(--primary)), transparent 30%) 5%,
+        var(--landing-gradient-shine) 15%,
+        color-mix(in oklch, oklch(var(--primary)), transparent 30%) 30%,
         transparent 40%,
         transparent 100%
       )
       border-box;
   border: 2px solid transparent;
   box-shadow: inset 0 0 0 1px #1a1818;
+  outline: none;
+  transition: --landing-gradient-angle-offset 800ms
+      cubic-bezier(0.25, 1, 0.5, 1),
+    --landing-gradient-percent 800ms cubic-bezier(0.25, 1, 0.5, 1),
+    --landing-gradient-shine 800ms cubic-bezier(0.25, 1, 0.5, 1),
+    box-shadow 0.3s;
   cursor: pointer;
   isolation: isolate;
+  outline-offset: 4px;
   font-family: var(--font-sans);
   z-index: 0;
   animation: landing-border-spin 2.5s linear infinite;
-  transition: box-shadow 0.3s;
 }
 
 .landing-shiny-cta:active {
@@ -800,6 +837,12 @@ html[data-scroll-behavior="smooth"] {
     padding-box;
   background-size: var(--space) var(--space);
   background-repeat: space;
+  -webkit-mask-image: conic-gradient(
+    from calc(var(--landing-gradient-angle) + 45deg),
+    black,
+    transparent 10% 90%,
+    black
+  );
   mask-image: conic-gradient(
     from calc(var(--landing-gradient-angle) + 45deg),
     black,
@@ -808,6 +851,7 @@ html[data-scroll-behavior="smooth"] {
   );
   border-radius: inherit;
   opacity: 0.4;
+  pointer-events: none;
 }
 
 .landing-shiny-cta::after {
@@ -826,9 +870,11 @@ html[data-scroll-behavior="smooth"] {
     oklch(var(--primary) / 0.6),
     transparent
   );
+  -webkit-mask-image: radial-gradient(circle at bottom, transparent 40%, black);
   mask-image: radial-gradient(circle at bottom, transparent 40%, black);
   opacity: 0.6;
   animation: landing-shimmer 4s linear infinite;
+  animation-play-state: running;
 }
 
 .landing-shiny-cta span {
@@ -851,6 +897,7 @@ html[data-scroll-behavior="smooth"] {
   box-shadow: inset 0 -1ex 2rem 4px oklch(var(--primary) / 0.6);
   opacity: 0;
   border-radius: inherit;
+  transition: opacity 800ms cubic-bezier(0.25, 1, 0.5, 1);
   animation: landing-breathe 4.5s linear infinite;
 }
 

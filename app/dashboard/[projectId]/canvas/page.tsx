@@ -463,7 +463,7 @@ function CanvasContent({ projectId }: { projectId: string }) {
             x: screenX,
             y: screenY,
             w: SCREEN_DEFAULTS.width,
-            h: frame.h, // Use frame height
+            h: SCREEN_DEFAULTS.height,
             screenId: convexScreenId,
             id: shapeId,
           },
@@ -559,7 +559,11 @@ function CanvasContent({ projectId }: { projectId: string }) {
             : undefined
         }
         initialImage={generationContext?.image}
-        initialPrompt={generationContext ? "Generate this" : undefined}
+        initialPrompt={
+          generationContext
+            ? "Generate a full blown professional/modern web page/component based on this user's sketch/wireframe"
+            : undefined
+        }
         initialModelId={generationContext ? "openai/gpt-5.1" : undefined}
         onInitialDataConsumed={() => setGenerationContext(null)}
       />

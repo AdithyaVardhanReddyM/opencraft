@@ -78,16 +78,14 @@ export default function Page() {
       {/* Navigation: Pill Shaped & Floating */}
       <nav className="fixed -translate-x-1/2 flex shadow-black/50 transition-all duration-300 hover:border-white/20 hover:shadow-primary/5 bg-gradient-to-br from-white/10 to-white/0 w-full lg:w-fit max-w-[90vw] z-50 rounded-full ring-white/10 ring-1 pt-1.5 pr-1.5 pb-1.5 pl-4 top-6 left-1/2 shadow-[0_2.8px_2.2px_rgba(0,_0,_0,_0.034),_0_6.7px_5.3px_rgba(0,_0,_0,_0.048),_0_12.5px_10px_rgba(0,_0,_0,_0.06),_0_22.3px_17.9px_rgba(0,_0,_0,_0.072),_0_41.8px_33.4px_rgba(0,_0,_0,_0.086),_0_100px_80px_rgba(0,_0,_0,_0.12)] backdrop-blur-xl items-center justify-between">
         {/* Logo Area */}
-        <div className="flex gap-2.5 items-center mr-8">
-          <div className="relative flex items-center justify-center">
-            <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-              <Layout className="h-3.5 w-3.5 text-primary-foreground" />
-            </div>
-          </div>
-          <span className="font-sans font-medium text-base tracking-tight text-white">
-            unit <span className="text-white/50 font-normal">{`{set}`}</span>
-          </span>
-        </div>
+        <Link href="/" className="flex items-center mr-8">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/unitset_fulllogo.svg"
+            alt="Unit Set"
+            className="h-5 w-auto"
+          />
+        </Link>
 
         {/* Links (Hidden on small screens) */}
         <div className="hidden md:flex items-center gap-6 mr-8">
@@ -115,7 +113,7 @@ export default function Page() {
         <Button
           asChild
           size="sm"
-          className="flex gap-2 hover:bg-primary transition-colors group text-xs font-semibold text-primary-foreground bg-white rounded-full py-2 px-4 items-center"
+          className="flex gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors group text-xs font-semibold rounded-full py-2 px-4 items-center"
         >
           <Link href="/sign-up">
             Get Started
@@ -125,37 +123,38 @@ export default function Page() {
       </nav>
 
       {/* Main Content */}
-      <main className="container lg:px-12 lg:pt-0 min-h-[1100px] flex flex-col lg:flex-row z-10 mx-auto pt-0 px-6 relative items-center">
-        {/* Left Column: Copy */}
-        <div className="lg:w-[40%] flex flex-col lg:py-0 lg:mt-0 w-full mt-16 pt-12 pb-20 justify-center">
-          <h4 className="text-xs font-mono tracking-[0.2em] text-white/40 uppercase mb-6 flex items-center gap-2">
+      <main className="container lg:px-12 flex flex-col z-10 mx-auto pt-32 px-6 relative items-center">
+        {/* Hero Text - Centered */}
+        <div className="flex flex-col items-center text-center w-full max-w-3xl pt-12 pb-16">
+          {/* <h4 className="text-xs font-mono tracking-[0.2em] text-white/40 uppercase mb-6 flex items-center gap-2 justify-center">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
             </span>
             AI-Powered Design
-          </h4>
+          </h4> */}
 
           <h1 className="lg:text-6xl leading-[1.1] text-primary landing-text-glow text-4xl italic tracking-tight font-serif mb-5">
-            Design at the
+            Vibe design for
             <br />
-            <span className="text-white opacity-90">speed of thought.</span>
+            <span className="text-white opacity-90">vibe coders.</span>
           </h1>
 
-          <p className="font-sans text-lg lg:text-xl font-light text-white/70 leading-relaxed tracking-tight max-w-md mb-10">
-            The familiarity of Figma meets the generative power of AI. Create
-            stunning interfaces just by{" "}
-            <span className="text-white font-medium">describing the vibe</span>.
+          <p className="font-sans text-lg lg:text-xl font-light text-white/70 leading-relaxed tracking-tight max-w-xl mb-10">
+            A simple yet powerful design tool for developers who want to level
+            up their UI game. Intuitive canvas, AI-powered generation, sandboxes
+            for live previews, and{" "}
+            <span className="text-white font-medium">so much more</span>.
           </p>
 
-          <div className="flex flex-col sm:flex-row gap-5 items-start sm:items-center">
+          <div className="flex flex-col sm:flex-row gap-5 items-center justify-center">
             {/* Animated Shiny CTA Button */}
             <button className="landing-shiny-cta focus:outline-hidden">
-              <span>Start Designing Free</span>
+              <span>Start Designing</span>
             </button>
 
             {/* Secondary Button */}
-            <button className="hover:bg-white/10 hover:text-white transition-all flex text-sm font-medium text-slate-300 bg-white/5 rounded-full py-3 px-5 gap-2 items-center group landing-border-gradient">
+            <button className="hover:bg-white/10 hover:text-white transition-all flex text-sm font-medium text-slate-300 bg-white/5 rounded-full py-5 px-10 gap-2 items-center group landing-border-gradient">
               <span className="text-sm font-medium tracking-tight">
                 Watch Demo
               </span>
@@ -164,15 +163,15 @@ export default function Page() {
           </div>
         </div>
 
-        {/* Right Column: Canvas Preview */}
-        <div className="lg:w-[60%] lg:h-[800px] flex w-full h-[500px] relative items-center justify-center lg:pl-4">
+        {/* Canvas Preview - Below Hero */}
+        <div className="w-full flex relative items-center justify-center pb-32">
           {/* Background Glow */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-full h-[80%] bg-primary/30 blur-[120px] rounded-full opacity-50" />
+            <div className="w-[80%] h-[60%] bg-primary/30 blur-[120px] rounded-full opacity-50" />
           </div>
 
           {/* Canvas Image with Primary Border */}
-          <div className="relative w-full max-w-[720px] group">
+          <div className="relative w-full max-w-4xl group">
             {/* Outer Glow Ring */}
             <div className="absolute -inset-1 bg-primary/20 rounded-2xl blur-md opacity-60 group-hover:opacity-80 transition-opacity duration-500" />
 
@@ -189,135 +188,6 @@ export default function Page() {
         </div>
 
         {/* Logo Marquee Section */}
-        <section className="w-[95%] z-20 pb-8 absolute bottom-0">
-          <div className="flex flex-col lg:flex-row overflow-hidden opacity-50 w-full pt-6 gap-6 items-center justify-between">
-            {/* Infinite Marquee Section */}
-            <div className="flex-1 overflow-hidden landing-mask-gradient-fade w-full relative">
-              <div className="flex landing-animate-marquee hover:[animation-play-state:paused] w-max gap-x-32 items-center">
-                {/* Original Set */}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="124"
-                  height="28"
-                  viewBox="0 0 512 90"
-                  className="w-[124px] h-[28px]"
-                  aria-hidden="true"
-                >
-                  <g fill="#ffffff">
-                    <path
-                      fillOpacity=".6"
-                      d="m33.83 8.897l6.176 18.062l-10.965 31.634a78.3 78.3 0 0 0 13.112 1.02a83 83 0 0 0 9.038-.475l3.768 11.744c-4.066.411-8.5.709-12.75.709a122 122 0 0 1-16.88-1.219l-6.254 18.332H0L29.835 8.897z"
-                    />
-                    <path d="M481.258 26.959c19.21 0 30.742 8.96 30.742 31.57c0 2.833-.078 5.907-.15 6.311h-44.227c-.078 9.102 7.664 13.076 19.741 13.076c8.132 0 14.613-1.898 18.983-3.188l.708 11.815c-3.62 1.353-11.453 3.322-22.149 3.322c-21.2.029-35.671-7.777-35.671-31.407c0-15.271 6.028-25.457 18.232-29.537v24.791h26.527c.07-11-4.144-15.753-13.26-15.753c-4.25 0-7.388 1.02-9.57 3.195V27.908a50.7 50.7 0 0 1 10.094-.95M201.561 2.309v56.22c0 12.042 2.487 19.415 13.26 19.415s14.089-7.402 14.089-19.415s-3.315-19.422-14.089-19.422c-4.519 0-7.536 1.289-9.57 3.669v-11.95c3.464-2.174 8.14-3.598 14.543-3.598c16.277 0 26.895 9.3 26.895 31.23c0 21.958-10.625 31.167-27.044 31.167c-10.172 0-16.05-3.542-19.366-8.082l-.828 7.132h-15.442V13.99h-7.841V2.31zm131.161 25.11c10.32 0 16.2 3.599 19.437 8.146l.906-7.473h15.371l.021 60.583h-17.56V58.53c0-12.042-2.485-19.422-13.259-19.422s-14.089 7.402-14.089 19.422s3.315 19.387 14.089 19.387c4.526 0 7.537-1.29 9.57-3.662V86.07c-3.464 2.167-8.21 3.541-14.542 3.541c-16.42 0-26.917-9.165-26.917-31.095s10.476-31.096 26.973-31.096M55.306 8.897l29.835 79.778H65.173l-27.2-79.778zm57.318 19.21V76.98h7.083v11.694H95.093V39.801h-7.834V28.106zm57.247-1.084a24.4 24.4 0 0 1 5.015.474l-.227 13.855c-1.417-.142-3.315-.276-4.958-.276c-5.2 0-8.89 1.225-11.454 3.124c-5.669 4.193-5.871 11.983-5.879 16.243v28.232H134.88V39.801h-7.842V28.106h23.283l1.133 9.712c3.167-6.177 9.039-10.795 18.417-10.795m127.003 0a24.4 24.4 0 0 1 5.05.474l-.227 13.855c-1.416-.142-3.314-.276-4.958-.276c-5.199 0-8.89 1.225-11.453 3.124c-5.663 4.193-5.865 11.983-5.872 16.243v28.232h-17.496V39.801h-7.841V28.106h23.282l1.134 9.712c3.166-6.177 9.038-10.795 18.38-10.795M402.59 2.309v86.366h-17.55V13.99h-7.834V2.31zm42.288 25.77l-21.491 28.275l24.19 32.321h-20.57l-23.134-32.009l21.171-28.588zM103.076 0c5.425 0 9.42 3.542 9.42 8.422s-3.995 8.415-9.42 8.415c-5.426 0-9.414-3.528-9.414-8.415h-.021C93.662 3.542 97.65 0 103.076 0" />
-                  </g>
-                </svg>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="96"
-                  height="30"
-                  viewBox="0 0 512 58"
-                  className="w-[96px] h-[30px]"
-                  aria-hidden="true"
-                >
-                  <path
-                    fill="#ffffff"
-                    d="M499.297 37.878c-2.064 5.4-6.192 8.497-11.829 8.497c-9.368 0-15.084-6.67-15.084-17.55c0-11.037 5.716-17.708 15.084-17.708c5.637 0 9.765 3.097 11.83 8.497h12.623C508.824 7.703 499.536 0 487.468 0c-16.037 0-27.39 11.911-27.39 28.825c0 16.755 11.353 28.667 27.39 28.667c12.147 0 21.436-7.782 24.532-19.614zM423.39.97l22.163 55.588h12.153L435.544.97zm-25.634 24.697h-14.695V11.69h14.695c5.878 0 8.976 2.382 8.976 6.988s-3.098 6.988-8.976 6.988M398.312.97h-27.167v55.588h11.916v-20.17h15.251c12.63 0 20.336-6.671 20.336-17.71c0-11.037-7.705-17.708-20.336-17.708m-65.535 45.405c-9.367 0-15.083-6.67-15.083-17.55c0-11.037 5.716-17.708 15.083-17.708c9.288 0 14.924 6.67 14.924 17.708c0 10.88-5.636 17.55-14.924 17.55m0-46.375c-16.036 0-27.388 11.911-27.388 28.825c0 16.755 11.352 28.667 27.388 28.667c15.956 0 27.23-11.912 27.23-28.667C360.006 11.911 348.732 0 332.776 0m-72.068 11.69h14.691c5.877 0 8.974 2.145 8.974 6.195s-3.097 6.194-8.974 6.194h-14.691zm35.577 6.195c0-10.483-7.703-16.915-20.33-16.915h-27.16v55.588h11.913V34.799h13.261l11.913 21.759h13.183l-13.19-23.416c6.62-2.545 10.41-7.905 10.41-15.257m-74.095 5.241h-26.2V.97h-11.909v55.588h11.91V33.846h26.2v22.712h11.908V.97H222.19zM125.296 11.69h18.659v44.868h11.91V11.69h18.658V.97h-49.227zm-21.034 28.191L79.253.971H65.756v55.587h11.512V17.646l25.01 38.912h13.496V.97h-11.512zM20.93 34.56l7.582-19.534l7.583 19.535zM22.158.97L0 56.558h12.39l4.532-11.674h23.182l4.53 11.674h12.39L34.867.97z"
-                  />
-                </svg>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="100"
-                  height="32"
-                  viewBox="0 0 256 256"
-                  className="w-[100px] h-[32px]"
-                  aria-hidden="true"
-                >
-                  <path
-                    fill="#ffffff"
-                    d="M128 0C57.308 0 0 57.308 0 128s57.308 128 128 128s128-57.308 128-128S198.692 0 128 0m0 234.667c-58.91 0-106.667-47.756-106.667-106.667S69.09 21.333 128 21.333S234.667 69.09 234.667 128S186.91 234.667 128 234.667"
-                  />
-                </svg>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="100"
-                  height="32"
-                  viewBox="0 0 256 256"
-                  className="w-[100px] h-[32px]"
-                  aria-hidden="true"
-                >
-                  <path
-                    fill="#ffffff"
-                    d="M128 0C57.308 0 0 57.308 0 128s57.308 128 128 128s128-57.308 128-128S198.692 0 128 0m0 234.667c-58.91 0-106.667-47.756-106.667-106.667S69.09 21.333 128 21.333S234.667 69.09 234.667 128S186.91 234.667 128 234.667"
-                  />
-                </svg>
-                {/* Duplicated Set for Loop */}
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="124"
-                  height="28"
-                  viewBox="0 0 512 90"
-                  className="w-[124px] h-[28px]"
-                  aria-hidden="true"
-                >
-                  <g fill="#ffffff">
-                    <path
-                      fillOpacity=".6"
-                      d="m33.83 8.897l6.176 18.062l-10.965 31.634a78.3 78.3 0 0 0 13.112 1.02a83 83 0 0 0 9.038-.475l3.768 11.744c-4.066.411-8.5.709-12.75.709a122 122 0 0 1-16.88-1.219l-6.254 18.332H0L29.835 8.897z"
-                    />
-                    <path d="M481.258 26.959c19.21 0 30.742 8.96 30.742 31.57c0 2.833-.078 5.907-.15 6.311h-44.227c-.078 9.102 7.664 13.076 19.741 13.076c8.132 0 14.613-1.898 18.983-3.188l.708 11.815c-3.62 1.353-11.453 3.322-22.149 3.322c-21.2.029-35.671-7.777-35.671-31.407c0-15.271 6.028-25.457 18.232-29.537v24.791h26.527c.07-11-4.144-15.753-13.26-15.753c-4.25 0-7.388 1.02-9.57 3.195V27.908a50.7 50.7 0 0 1 10.094-.95M201.561 2.309v56.22c0 12.042 2.487 19.415 13.26 19.415s14.089-7.402 14.089-19.415s-3.315-19.422-14.089-19.422c-4.519 0-7.536 1.289-9.57 3.669v-11.95c3.464-2.174 8.14-3.598 14.543-3.598c16.277 0 26.895 9.3 26.895 31.23c0 21.958-10.625 31.167-27.044 31.167c-10.172 0-16.05-3.542-19.366-8.082l-.828 7.132h-15.442V13.99h-7.841V2.31zm131.161 25.11c10.32 0 16.2 3.599 19.437 8.146l.906-7.473h15.371l.021 60.583h-17.56V58.53c0-12.042-2.485-19.422-13.259-19.422s-14.089 7.402-14.089 19.422s3.315 19.387 14.089 19.387c4.526 0 7.537-1.29 9.57-3.662V86.07c-3.464 2.167-8.21 3.541-14.542 3.541c-16.42 0-26.917-9.165-26.917-31.095s10.476-31.096 26.973-31.096M55.306 8.897l29.835 79.778H65.173l-27.2-79.778zm57.318 19.21V76.98h7.083v11.694H95.093V39.801h-7.834V28.106zm57.247-1.084a24.4 24.4 0 0 1 5.015.474l-.227 13.855c-1.417-.142-3.315-.276-4.958-.276c-5.2 0-8.89 1.225-11.454 3.124c-5.669 4.193-5.871 11.983-5.879 16.243v28.232H134.88V39.801h-7.842V28.106h23.283l1.133 9.712c3.167-6.177 9.039-10.795 18.417-10.795m127.003 0a24.4 24.4 0 0 1 5.05.474l-.227 13.855c-1.416-.142-3.314-.276-4.958-.276c-5.199 0-8.89 1.225-11.453 3.124c-5.663 4.193-5.865 11.983-5.872 16.243v28.232h-17.496V39.801h-7.841V28.106h23.282l1.134 9.712c3.166-6.177 9.038-10.795 18.38-10.795M402.59 2.309v86.366h-17.55V13.99h-7.834V2.31zm42.288 25.77l-21.491 28.275l24.19 32.321h-20.57l-23.134-32.009l21.171-28.588zM103.076 0c5.425 0 9.42 3.542 9.42 8.422s-3.995 8.415-9.42 8.415c-5.426 0-9.414-3.528-9.414-8.415h-.021C93.662 3.542 97.65 0 103.076 0" />
-                  </g>
-                </svg>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="96"
-                  height="30"
-                  viewBox="0 0 512 58"
-                  className="w-[96px] h-[30px]"
-                  aria-hidden="true"
-                >
-                  <path
-                    fill="#ffffff"
-                    d="M499.297 37.878c-2.064 5.4-6.192 8.497-11.829 8.497c-9.368 0-15.084-6.67-15.084-17.55c0-11.037 5.716-17.708 15.084-17.708c5.637 0 9.765 3.097 11.83 8.497h12.623C508.824 7.703 499.536 0 487.468 0c-16.037 0-27.39 11.911-27.39 28.825c0 16.755 11.353 28.667 27.39 28.667c12.147 0 21.436-7.782 24.532-19.614zM423.39.97l22.163 55.588h12.153L435.544.97zm-25.634 24.697h-14.695V11.69h14.695c5.878 0 8.976 2.382 8.976 6.988s-3.098 6.988-8.976 6.988M398.312.97h-27.167v55.588h11.916v-20.17h15.251c12.63 0 20.336-6.671 20.336-17.71c0-11.037-7.705-17.708-20.336-17.708m-65.535 45.405c-9.367 0-15.083-6.67-15.083-17.55c0-11.037 5.716-17.708 15.083-17.708c9.288 0 14.924 6.67 14.924 17.708c0 10.88-5.636 17.55-14.924 17.55m0-46.375c-16.036 0-27.388 11.911-27.388 28.825c0 16.755 11.352 28.667 27.388 28.667c15.956 0 27.23-11.912 27.23-28.667C360.006 11.911 348.732 0 332.776 0m-72.068 11.69h14.691c5.877 0 8.974 2.145 8.974 6.195s-3.097 6.194-8.974 6.194h-14.691zm35.577 6.195c0-10.483-7.703-16.915-20.33-16.915h-27.16v55.588h11.913V34.799h13.261l11.913 21.759h13.183l-13.19-23.416c6.62-2.545 10.41-7.905 10.41-15.257m-74.095 5.241h-26.2V.97h-11.909v55.588h11.91V33.846h26.2v22.712h11.908V.97H222.19zM125.296 11.69h18.659v44.868h11.91V11.69h18.658V.97h-49.227zm-21.034 28.191L79.253.971H65.756v55.587h11.512V17.646l25.01 38.912h13.496V.97h-11.512zM20.93 34.56l7.582-19.534l7.583 19.535zM22.158.97L0 56.558h12.39l4.532-11.674h23.182l4.53 11.674h12.39L34.867.97z"
-                  />
-                </svg>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="100"
-                  height="32"
-                  viewBox="0 0 256 256"
-                  className="w-[100px] h-[32px]"
-                  aria-hidden="true"
-                >
-                  <path
-                    fill="#ffffff"
-                    d="M128 0C57.308 0 0 57.308 0 128s57.308 128 128 128s128-57.308 128-128S198.692 0 128 0m0 234.667c-58.91 0-106.667-47.756-106.667-106.667S69.09 21.333 128 21.333S234.667 69.09 234.667 128S186.91 234.667 128 234.667"
-                  />
-                </svg>
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="100"
-                  height="32"
-                  viewBox="0 0 256 256"
-                  className="w-[100px] h-[32px]"
-                  aria-hidden="true"
-                >
-                  <path
-                    fill="#ffffff"
-                    d="M128 0C57.308 0 0 57.308 0 128s57.308 128 128 128s128-57.308 128-128S198.692 0 128 0m0 234.667c-58.91 0-106.667-47.756-106.667-106.667S69.09 21.333 128 21.333S234.667 69.09 234.667 128S186.91 234.667 128 234.667"
-                  />
-                </svg>
-              </div>
-            </div>
-
-            {/* Trusted By Label */}
-            <div className="flex items-center gap-3 text-white/30 text-xs font-mono shrink-0 relative z-10 bg-[#030303] pl-4 lg:bg-transparent lg:pl-0">
-              <span className="text-white tracking-wide">
-                [ <span className="text-primary">✓</span> ] TRUSTED BY INDUSTRY
-                LEADERS
-              </span>
-            </div>
-          </div>
-        </section>
       </main>
 
       {/* Features Section */}
@@ -327,16 +197,6 @@ export default function Page() {
 
         {/* Section Header */}
         <div className="flex flex-col items-center text-center max-w-3xl mb-24 relative z-10">
-          <div className="flex items-center gap-3 mb-8 px-4 py-1.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-sm">
-            <span className="flex h-2 w-2 relative">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
-            </span>
-            <span className="text-xs font-mono text-primary uppercase tracking-[0.2em] font-medium">
-              Powerful Features
-            </span>
-          </div>
-
           <h2 className="text-5xl md:text-6xl lg:text-7xl font-serif font-medium tracking-tight text-white mb-8">
             Design intelligence
             <span className="text-white/60"> made effortless.</span>
