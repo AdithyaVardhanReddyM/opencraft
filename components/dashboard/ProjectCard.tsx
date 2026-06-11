@@ -45,9 +45,14 @@ export function ProjectCard({
   return (
     <>
       <Card
-        className={`overflow-hidden p-0 cursor-pointer transition-all duration-200 border-border/50 hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5 group relative bg-card ${
+        className={`overflow-hidden p-0 cursor-pointer transition-all duration-200 border-0 hover:border-0 group relative bg-card ${
           isDeleting ? "opacity-0 scale-95" : "opacity-100 scale-100"
         }`}
+        style={{
+          boxShadow: isHovered
+            ? "0 10px 36px -4px oklch(0.7114 0.1728 56.6323 / 1), 0 12px 24px -8px oklch(0 0 0 / 0.4)"
+            : undefined,
+        }}
         onClick={handleCardClick}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}

@@ -73,6 +73,7 @@ import {
   getProviders,
   modelSupportsVision,
 } from "@/lib/ai-models";
+import { CreditBar } from "@/components/canvas/CreditBar";
 import { nanoid } from "nanoid";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -768,138 +769,144 @@ function ChatInput({
         onChange={handleFileChange}
       />
 
-      <PromptInput
-        onSubmit={handleSubmit}
-        className={cn(
-          "rounded-xl bg-muted/30 border border-border/40 transition-colors hover:bg-muted/40",
-          "focus-within:bg-muted/50 focus-within:border-border/60",
-          "focus-within:ring-[3px] focus-within:ring-primary/70 focus-within:ring-offset-0 focus-within:shadow-[0_0_24px_rgba(249,115,22,0.35)]"
-        )}
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-      >
-        <PromptInputBody>
-          {/* Extension Chip */}
-          {extensionContent && (
-            <div className="px-3 pt-3">
-              <ExtensionChip
-                content={extensionContent}
-                onRemove={handleRemoveExtensionContent}
-              />
-            </div>
-          )}
+      {/* Credit bar and input container */}
+      <div className="rounded-xl overflow-hidden border border-border/40 bg-muted/30 hover:bg-muted/40 transition-colors focus-within:bg-muted/50 focus-within:border-border/60 focus-within:ring-[3px] focus-within:ring-primary/70 focus-within:ring-offset-0 focus-within:shadow-[0_0_24px_rgba(249,115,22,0.35)]">
+        {/* Credit Bar */}
+        <CreditBar credits={30} selectedModelId={selectedModel} />
 
-          {/* Image Attachments */}
-          {pendingImages.length > 0 && (
-            <div className="flex flex-wrap gap-2 px-3 pt-3">
-              {pendingImages.map((img) => (
-                <ImageAttachmentChip
-                  key={img.id}
-                  attachment={img}
-                  onRemove={() => removeImage(img.id)}
+        <PromptInput
+          onSubmit={handleSubmit}
+          className="border-0 ring-0 shadow-none focus-within:ring-0 bg-transparent"
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+        >
+          <PromptInputBody>
+            {/* Extension Chip */}
+            {extensionContent && (
+              <div className="px-3 pt-3">
+                <ExtensionChip
+                  content={extensionContent}
+                  onRemove={handleRemoveExtensionContent}
                 />
-              ))}
-            </div>
-          )}
-
-          {/* Vision warning */}
-          {showVisionWarning && (
-            <div className="px-3 pt-2">
-              <p className="text-xs text-amber-500">
-                ⚠️ {selectedModelData?.name} may not process images
-              </p>
-            </div>
-          )}
-
-          <PromptInputTextarea
-            placeholder={
-              extensionContent
-                ? "Add instructions for replication..."
-                : pendingImages.length > 0
-                ? "Describe what you want to do with these images..."
-                : "Ask AI anything..."
-            }
-            className="min-h-[36px] max-h-[120px] text-sm placeholder:text-muted-foreground/50 bg-transparent border-none shadow-none focus-visible:ring-0"
-            value={inputValue}
-            onChange={handleInputChange}
-            onPaste={handlePaste}
-          />
-        </PromptInputBody>
-        <PromptInputFooter className="justify-between px-2 pb-2">
-          <PromptInputTools>
-            {/* Add Image Button - hide for xAI Grok (free tier doesn't support vision) */}
-            {selectedModel !== DEFAULT_MODEL_ID && (
-              <PromptInputActionMenu>
-                <PromptInputActionMenuTrigger />
-                <PromptInputActionMenuContent>
-                  <DropdownMenuItem onSelect={openFilePicker}>
-                    <ImageIcon className="mr-2 size-4" />
-                    Add photos
-                  </DropdownMenuItem>
-                </PromptInputActionMenuContent>
-              </PromptInputActionMenu>
+              </div>
             )}
 
-            {/* Model Selector */}
-            <ModelSelector
-              open={modelSelectorOpen}
-              onOpenChange={setModelSelectorOpen}
-            >
-              <ModelSelectorTrigger asChild>
-                <PromptInputButton>
-                  {selectedModelData?.providerSlug && (
-                    <ModelSelectorLogo
-                      provider={selectedModelData.providerSlug}
-                    />
-                  )}
-                  <ModelSelectorName className="max-w-[80px] text-xs">
-                    {selectedModelData?.name || "Select model"}
-                  </ModelSelectorName>
-                </PromptInputButton>
-              </ModelSelectorTrigger>
-              <ModelSelectorContent>
-                <ModelSelectorInput
-                  placeholder="Search models..."
-                  className="focus-visible:ring-0"
-                />
-                <ModelSelectorList>
-                  <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
-                  {providers.map((provider) => (
-                    <ModelSelectorGroup heading={provider} key={provider}>
-                      {AI_MODELS.filter((m) => m.provider === provider).map(
-                        (model) => (
-                          <ModelSelectorItem
-                            key={model.id}
-                            value={model.id}
-                            onSelect={() => {
-                              setSelectedModel(model.id);
-                              setModelSelectorOpen(false);
-                            }}
-                          >
-                            <ModelSelectorLogo provider={model.providerSlug} />
-                            <ModelSelectorName>{model.name}</ModelSelectorName>
-                            {selectedModel === model.id ? (
-                              <CheckIcon className="ml-auto size-4" />
-                            ) : (
-                              <div className="ml-auto size-4" />
-                            )}
-                          </ModelSelectorItem>
-                        )
-                      )}
-                    </ModelSelectorGroup>
-                  ))}
-                </ModelSelectorList>
-              </ModelSelectorContent>
-            </ModelSelector>
-          </PromptInputTools>
+            {/* Image Attachments */}
+            {pendingImages.length > 0 && (
+              <div className="flex flex-wrap gap-2 px-3 pt-3">
+                {pendingImages.map((img) => (
+                  <ImageAttachmentChip
+                    key={img.id}
+                    attachment={img}
+                    onRemove={() => removeImage(img.id)}
+                  />
+                ))}
+              </div>
+            )}
 
-          <PromptInputSubmit
-            status={status}
-            size="icon-sm"
-            className="h-8 w-8 rounded-lg"
-          />
-        </PromptInputFooter>
-      </PromptInput>
+            {/* Vision warning */}
+            {showVisionWarning && (
+              <div className="px-3 pt-2">
+                <p className="text-xs text-amber-500">
+                  ⚠️ {selectedModelData?.name} may not process images
+                </p>
+              </div>
+            )}
+
+            <PromptInputTextarea
+              placeholder={
+                extensionContent
+                  ? "Add instructions for replication..."
+                  : pendingImages.length > 0
+                  ? "Describe what you want to do with these images..."
+                  : "Ask AI anything..."
+              }
+              className="min-h-[36px] max-h-[120px] text-sm placeholder:text-muted-foreground/50 bg-transparent border-none shadow-none focus-visible:ring-0"
+              value={inputValue}
+              onChange={handleInputChange}
+              onPaste={handlePaste}
+            />
+          </PromptInputBody>
+          <PromptInputFooter className="justify-between px-2 pb-2">
+            <PromptInputTools>
+              {/* Add Image Button - hide for xAI Grok (free tier doesn't support vision) */}
+              {selectedModel !== DEFAULT_MODEL_ID && (
+                <PromptInputActionMenu>
+                  <PromptInputActionMenuTrigger />
+                  <PromptInputActionMenuContent>
+                    <DropdownMenuItem onSelect={openFilePicker}>
+                      <ImageIcon className="mr-2 size-4" />
+                      Add photos
+                    </DropdownMenuItem>
+                  </PromptInputActionMenuContent>
+                </PromptInputActionMenu>
+              )}
+
+              {/* Model Selector */}
+              <ModelSelector
+                open={modelSelectorOpen}
+                onOpenChange={setModelSelectorOpen}
+              >
+                <ModelSelectorTrigger asChild>
+                  <PromptInputButton>
+                    {selectedModelData?.providerSlug && (
+                      <ModelSelectorLogo
+                        provider={selectedModelData.providerSlug}
+                      />
+                    )}
+                    <ModelSelectorName className="max-w-[80px] text-xs">
+                      {selectedModelData?.name || "Select model"}
+                    </ModelSelectorName>
+                  </PromptInputButton>
+                </ModelSelectorTrigger>
+                <ModelSelectorContent>
+                  <ModelSelectorInput
+                    placeholder="Search models..."
+                    className="focus-visible:ring-0"
+                  />
+                  <ModelSelectorList>
+                    <ModelSelectorEmpty>No models found.</ModelSelectorEmpty>
+                    {providers.map((provider) => (
+                      <ModelSelectorGroup heading={provider} key={provider}>
+                        {AI_MODELS.filter((m) => m.provider === provider).map(
+                          (model) => (
+                            <ModelSelectorItem
+                              key={model.id}
+                              value={model.id}
+                              onSelect={() => {
+                                setSelectedModel(model.id);
+                                setModelSelectorOpen(false);
+                              }}
+                            >
+                              <ModelSelectorLogo
+                                provider={model.providerSlug}
+                              />
+                              <ModelSelectorName>
+                                {model.name}
+                              </ModelSelectorName>
+                              {selectedModel === model.id ? (
+                                <CheckIcon className="ml-auto size-4" />
+                              ) : (
+                                <div className="ml-auto size-4" />
+                              )}
+                            </ModelSelectorItem>
+                          )
+                        )}
+                      </ModelSelectorGroup>
+                    ))}
+                  </ModelSelectorList>
+                </ModelSelectorContent>
+              </ModelSelector>
+            </PromptInputTools>
+
+            <PromptInputSubmit
+              status={status}
+              size="icon-sm"
+              className="h-8 w-8 rounded-lg"
+            />
+          </PromptInputFooter>
+        </PromptInput>
+      </div>
     </div>
   );
 }

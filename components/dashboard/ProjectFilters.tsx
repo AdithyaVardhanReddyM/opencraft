@@ -105,7 +105,7 @@ export function ProjectFilters({
                     size="icon"
                     className={`size-8 ${
                       sortBy === option.value
-                        ? "bg-background shadow-sm text-primary"
+                        ? "bg-background shadow-sm text-primary hover:bg-background hover:text-primary"
                         : "text-muted-foreground hover:text-foreground"
                     }`}
                     onClick={() => onSortChange(option.value)}
