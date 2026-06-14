@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import {
   MessageSquare,
   AlertCircle,
@@ -210,6 +210,19 @@ export function AISidebar({
   // Map streaming status to chat input status
   const chatStatus: ChatInputStatus = status;
 
+  // Extract the last used model from message history
+  // Look for the most recent user message with a modelId
+  const lastUsedModelId = useMemo(() => {
+    // Find the last user message that has a modelId
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const msg = messages[i];
+      if (msg.role === "user" && msg.modelId) {
+        return msg.modelId;
+      }
+    }
+    return undefined;
+  }, [messages]);
+
   // Determine if sidebar should be expanded (Code tab is active)
   const isExpanded = activeTab === "code";
 
@@ -311,6 +324,7 @@ export function AISidebar({
               initialImage={initialImage}
               initialPrompt={initialPrompt}
               initialModelId={initialModelId}
+              lastUsedModelId={lastUsedModelId}
               onInitialDataConsumed={onInitialDataConsumed}
               generationsRemaining={generationsRemaining}
               generationsLimit={generationsLimit}
@@ -590,6 +604,7 @@ function ChatInput({
   initialImage,
   initialPrompt,
   initialModelId,
+  lastUsedModelId,
   onInitialDataConsumed,
   generationsRemaining,
   generationsLimit,
@@ -607,6 +622,7 @@ function ChatInput({
   initialImage?: Blob;
   initialPrompt?: string;
   initialModelId?: string;
+  lastUsedModelId?: string; // Last model used in this screen's chat history
   onInitialDataConsumed?: () => void;
   generationsRemaining: number;
   generationsLimit: number;
@@ -615,7 +631,10 @@ function ChatInput({
   const [inputValue, setInputValue] = useState("");
   const [extensionContent, setExtensionContent] =
     useState<CapturedElement | null>(null);
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL_ID);
+  // Initialize with lastUsedModelId if available, otherwise use default
+  const [selectedModel, setSelectedModel] = useState(
+    lastUsedModelId || DEFAULT_MODEL_ID
+  );
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
   const [pendingImages, setPendingImages] = useState<ImageAttachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -623,6 +642,24 @@ function ChatInput({
 
   const selectedModelData = getModelById(selectedModel);
   const providers = getProviders();
+
+  // Track the previous lastUsedModelId to detect screen changes
+  const prevLastUsedModelIdRef = useRef<string | undefined>(lastUsedModelId);
+
+  // Update selected model when lastUsedModelId changes (e.g., when switching screens)
+  // This should always update when the value changes, regardless of initialDataProcessedRef
+  useEffect(() => {
+    // Only update if lastUsedModelId actually changed (not just on mount)
+    if (lastUsedModelId !== prevLastUsedModelIdRef.current) {
+      prevLastUsedModelIdRef.current = lastUsedModelId;
+      if (lastUsedModelId) {
+        setSelectedModel(lastUsedModelId);
+      } else {
+        // Reset to default when switching to a screen with no history
+        setSelectedModel(DEFAULT_MODEL_ID);
+      }
+    }
+  }, [lastUsedModelId]);
 
   // Handle initial data from frame generation
   useEffect(() => {
@@ -636,7 +673,7 @@ function ChatInput({
       setInputValue(initialPrompt);
     }
 
-    // Set initial model
+    // Set initial model (initialModelId takes precedence over lastUsedModelId)
     if (initialModelId) {
       setSelectedModel(initialModelId);
     }

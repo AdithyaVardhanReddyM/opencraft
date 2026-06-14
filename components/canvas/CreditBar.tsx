@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { Sparkles } from "lucide-react";
+import { Sparkle } from "lucide-react";
 
 interface CreditBarProps {
   generationsRemaining: number;
@@ -24,7 +24,7 @@ export function CreditBar({
   return (
     <div
       className={cn(
-        "flex items-center px-3 py-2",
+        "flex items-center px-3 py-0.5",
         isExhausted
           ? "bg-linear-to-r from-destructive/20 via-destructive/15 to-destructive/10 border-b border-destructive/30"
           : isLow
@@ -34,16 +34,7 @@ export function CreditBar({
       )}
     >
       <div className="flex items-center gap-2 text-[12px]">
-        <Sparkles
-          className={cn(
-            "h-3.5 w-3.5",
-            isExhausted
-              ? "text-destructive"
-              : isLow
-              ? "text-amber-500"
-              : "text-primary"
-          )}
-        />
+        <Sparkle fill="#f08000" className={cn("h-3 w-3 text-primary")} />
         <span
           className={cn(
             "font-medium",
@@ -54,7 +45,7 @@ export function CreditBar({
               : "text-primary"
           )}
         >
-          {generationsRemaining} of {generationsLimit} generations left
+          {generationsRemaining} / {generationsLimit} messages left
         </span>
         {isExhausted && (
           <span className="text-muted-foreground ml-1">• Limit reached</span>

@@ -25,15 +25,27 @@ interface AgentState {
   filesSummary: string;
   title: string;
   files: { [path: string]: string };
+  reasoningDetails?: unknown; // For models like Gemini 3 Pro that require reasoning token storage
 }
 
 // OpenRouter provider using OpenAI-compatible API
-const openrouter = (config: { model: string }) =>
-  openai({
+// For models that require reasoning (like Gemini 3 Pro), we use a proxy that adds the reasoning parameter
+const openrouter = (config: { model: string }) => {
+  const needsReasoning = requiresReasoningTokens(config.model);
+
+  // Use proxy for reasoning models, direct OpenRouter for others
+  const baseUrl = needsReasoning
+    ? `${
+        process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+      }/api/openrouter-proxy`
+    : "https://openrouter.ai/api/v1";
+
+  return openai({
     model: config.model,
     apiKey: process.env.OPENROUTER_API_KEY,
-    baseUrl: "https://openrouter.ai/api/v1",
+    baseUrl,
   });
+};
 
 // Get Convex HTTP endpoint URL for internal API calls
 const getConvexHttpUrl = () => {
@@ -77,8 +89,18 @@ const extractTitle = (content: string): string => {
 // Auto-pause timeout for sandboxes (15 minutes)
 const SANDBOX_AUTO_PAUSE_TIMEOUT_MS = 15 * 60 * 1000;
 
-// Default model ID
-const DEFAULT_MODEL_ID = "openai/gpt-5.1";
+// Default model ID - Google Gemini 3 Pro
+const DEFAULT_MODEL_ID = "google/gemini-3-pro-preview";
+
+// Models that require reasoning token storage (Gemini 3 Pro)
+const REASONING_MODELS = ["google/gemini-3-pro-preview"];
+
+/**
+ * Check if a model requires reasoning token storage
+ */
+function requiresReasoningTokens(modelId: string): boolean {
+  return REASONING_MODELS.some((m) => modelId.includes(m));
+}
 
 // Chat function - directly invoke agent without network
 export const runChatAgent = inngest.createFunction(
@@ -251,6 +273,7 @@ export const runChatAgent = inngest.createFunction(
         filesSummary: "",
         title: "",
         files: screen?.files || {},
+        reasoningDetails: undefined, // Will be populated for Gemini 3 Pro responses
       },
       { messages: previousMessages }
     );
@@ -498,25 +521,40 @@ Create a React component that is a PIXEL-PERFECT replica of the captured element
             { files },
             { step, network }: Tool.Options<AgentState>
           ) => {
-            const newFiles = await step?.run(
-              "createorUpdateFiles",
-              async () => {
-                try {
-                  const updatedFiles = network.state.data.files || {};
-                  const sandbox = await getSandbox(sandboxId);
-                  for (const file of files) {
-                    await sandbox.files.write(file.path, file.content);
-                    updatedFiles[file.path] = file.content;
-                  }
-                  return updatedFiles;
-                } catch (error) {
-                  return `Error: ${error}`;
+            // Get current files from state before the step
+            const currentFiles = { ...(network.state.data.files || {}) };
+
+            const result = await step?.run("createorUpdateFiles", async () => {
+              try {
+                const sandbox = await getSandbox(sandboxId);
+                const writtenFiles: Record<string, string> = {};
+                for (const file of files) {
+                  await sandbox.files.write(file.path, file.content);
+                  writtenFiles[file.path] = file.content;
                 }
+                return { success: true, files: writtenFiles };
+              } catch (error) {
+                return { success: false, error: String(error) };
               }
-            );
-            if (typeof newFiles === "object") {
-              network.state.data.files = newFiles;
+            });
+
+            // Update state with the written files
+            if (result && typeof result === "object" && "success" in result) {
+              if (result.success && "files" in result) {
+                const writtenFiles = result.files as Record<string, string>;
+                // Merge written files into current files
+                network.state.data.files = {
+                  ...currentFiles,
+                  ...writtenFiles,
+                };
+                return `Successfully wrote ${
+                  Object.keys(writtenFiles).length
+                } file(s): ${Object.keys(writtenFiles).join(", ")}`;
+              } else if ("error" in result) {
+                return `Error: ${result.error}`;
+              }
             }
+            return "Unknown error occurred";
           },
         }),
         createTool({
@@ -566,6 +604,20 @@ Create a React component that is a PIXEL-PERFECT replica of the captured element
               network.state.data.filesSummary = filesSummaryMatch[0];
             }
           }
+
+          // Extract reasoning_details from the last assistant message for Gemini 3 Pro
+          // The reasoning_details are returned in the raw response and need to be stored
+          if (network && result.output.length > 0) {
+            const lastMessage = result.output[result.output.length - 1];
+            // Check if the message has reasoning_details (from Gemini 3 Pro)
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const messageWithReasoning = lastMessage as any;
+            if (messageWithReasoning?.reasoning_details) {
+              network.state.data.reasoningDetails =
+                messageWithReasoning.reasoning_details;
+            }
+          }
+
           return result;
         },
       },
@@ -621,9 +673,25 @@ Create a React component that is a PIXEL-PERFECT replica of the captured element
       }),
     });
 
-    const isError =
-      !result.state.data.summary ||
-      Object.keys(result.state.data.files || {}).length === 0;
+    // Check if the generation was successful
+    // A generation is successful if we have a task_summary in the response
+    // Files tracking might fail but the sandbox still has the generated code
+    const hasSummary =
+      result.state.data.summary &&
+      result.state.data.summary.includes("<task_summary>");
+    const hasFiles = Object.keys(result.state.data.files || {}).length > 0;
+
+    // Log state for debugging
+    console.log("[runChatAgent] Generation result:", {
+      hasSummary,
+      hasFiles,
+      filesCount: Object.keys(result.state.data.files || {}).length,
+      summaryLength: result.state.data.summary?.length || 0,
+    });
+
+    // Consider it an error only if we don't have a summary
+    // Files might not be tracked but the sandbox still has them
+    const isError = !hasSummary;
 
     const sandboxUrl = await step.run("get-sandbox-url", async () => {
       const sandbox = await getSandbox(sandboxId);
@@ -686,14 +754,25 @@ Create a React component that is a PIXEL-PERFECT replica of the captured element
             }\n\n${filesSummary}`
           : cleanSummary || "UI generation completed successfully.";
 
+        // Include reasoning_details for models like Gemini 3 Pro
+        const reasoningDetails = result.state.data.reasoningDetails;
+
+        // Build the message payload
+        const messagePayload: Record<string, unknown> = {
+          screenId,
+          role: "assistant",
+          content: messageContent,
+        };
+
+        // Add reasoning details if present (for Gemini 3 Pro)
+        if (reasoningDetails !== undefined && reasoningDetails !== null) {
+          messagePayload.reasoningDetails = reasoningDetails;
+        }
+
         const response = await fetch(`${convexHttpUrl}/inngest/createMessage`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            screenId,
-            role: "assistant",
-            content: messageContent,
-          }),
+          body: JSON.stringify(messagePayload),
         });
 
         if (!response.ok) {

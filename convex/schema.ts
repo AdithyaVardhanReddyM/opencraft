@@ -56,6 +56,7 @@ export default defineSchema({
     content: v.string(), // Message content
     modelId: v.optional(v.string()), // AI model used for this message
     imageIds: v.optional(v.array(v.id("_storage"))), // Attached image storage IDs
+    reasoningDetails: v.optional(v.any()), // Reasoning details for models like Gemini 3 Pro (pass back unmodified)
     createdAt: v.number(), // Creation timestamp
   }).index("by_screenId", ["screenId"]),
 });

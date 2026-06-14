@@ -564,7 +564,9 @@ function CanvasContent({ projectId }: { projectId: string }) {
             ? "Generate a full blown professional/modern web page/component based on this user's sketch/wireframe"
             : undefined
         }
-        initialModelId={generationContext ? "openai/gpt-5.1" : undefined}
+        initialModelId={
+          generationContext ? "google/gemini-3-pro-preview" : undefined
+        }
         onInitialDataConsumed={() => setGenerationContext(null)}
       />
 

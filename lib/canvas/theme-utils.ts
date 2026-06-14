@@ -7,6 +7,8 @@ export interface ThemeDefinition {
   id: string;
   name: string;
   command: string;
+  /** Preview colors: [primary, secondary, accent] */
+  colors: [string, string, string];
 }
 
 /**
@@ -137,102 +139,123 @@ export const DEFAULT_GLOBALS_CSS = `@import "tailwindcss";
 `;
 
 export const THEMES: ThemeDefinition[] = [
-  { id: "default", name: "Default", command: "" },
+  {
+    id: "default",
+    name: "Default",
+    command: "",
+    colors: ["oklch(0.205 0 0)", "oklch(0.97 0 0)", "oklch(0.97 0 0)"],
+  },
   {
     id: "claude",
     name: "Claude",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/claude.json --yes",
+    colors: ["#c96442", "#e9e6dc", "#e9e6dc"],
   },
   {
     id: "amber-minimal",
     name: "Amber Minimal",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/amber-minimal.json --yes",
+    colors: ["#f59e0b", "#fffbeb", "#f3f4f6"],
   },
   {
     id: "amethyst-haze",
     name: "Amethyst Haze",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/amethyst-haze.json --yes",
+    colors: ["#8a79ab", "#e6a5b8", "#dfd9ec"],
   },
   {
     id: "bold-tech",
     name: "Bold Tech",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/bold-tech.json --yes",
+    colors: ["#8b5cf6", "#dbeafe", "#f3f0ff"],
   },
   {
     id: "bubblegum",
     name: "Bubblegum",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/bubblegum.json --yes",
+    colors: ["#d04f99", "#fbe2a7", "#8acfd1"],
   },
   {
     id: "caffeine",
     name: "Caffeine",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/caffeine.json --yes",
+    colors: ["#644a40", "#e8e8e8", "#ffdfb5"],
   },
   {
     id: "candyland",
     name: "Candyland",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/candyland.json --yes",
+    colors: ["#ffc0cb", "#ffff00", "#87ceeb"],
   },
   {
     id: "catppuccin",
     name: "Catppuccin",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/catppuccin.json --yes",
+    colors: ["#8839ef", "#04a5e5", "#ccd0da"],
   },
   {
     id: "claymorphism",
     name: "Claymorphism",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/claymorphism.json --yes",
+    colors: ["#6366f1", "#f3e5f5", "#d6d3d1"],
   },
   {
     id: "clean-slate",
     name: "Clean Slate",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/clean-slate.json --yes",
+    colors: ["#6366f1", "#e0e7ff", "#e5e7eb"],
   },
   {
     id: "cyberpunk",
     name: "Cyberpunk",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/cyberpunk.json --yes",
+    colors: ["#ff00c8", "#00ffcc", "#f0f0ff"],
   },
   {
     id: "neo-brutalism",
     name: "Neo Brutalism",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/neo-brutalism.json --yes",
+    colors: ["#ff3333", "#0066ff", "#ffff00"],
   },
   {
     id: "supabase",
     name: "Supabase",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/supabase.json --yes",
+    colors: ["#72e3ad", "#ededed", "#fdfdfd"],
   },
   {
     id: "t3-chat",
     name: "T3 Chat",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/t3-chat.json --yes",
+    colors: ["#a84370", "#f1c4e6", "#f1c4e6"],
   },
   {
     id: "twitter",
     name: "Twitter",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/twitter.json --yes",
+    colors: ["#1e9df1", "#E3ECF6", "#0f1419"],
   },
   {
     id: "vercel",
     name: "Vercel",
     command:
       "npx shadcn@latest add https://tweakcn.com/r/themes/vercel.json --yes",
+    colors: ["oklch(0 0 0)", "oklch(0.94 0 0)", "oklch(0.94 0 0)"],
   },
 ];
 

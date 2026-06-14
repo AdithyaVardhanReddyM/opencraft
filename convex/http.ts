@@ -59,7 +59,8 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     try {
-      const { screenId, role, content } = await request.json();
+      const { screenId, role, content, reasoningDetails } =
+        await request.json();
 
       if (!screenId || !role || !content) {
         return new Response(
@@ -79,6 +80,7 @@ http.route({
           screenId,
           role,
           content,
+          reasoningDetails, // Pass reasoning details for models like Gemini 3 Pro
         }
       );
 

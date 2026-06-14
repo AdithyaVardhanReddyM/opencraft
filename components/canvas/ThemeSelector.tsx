@@ -12,8 +12,21 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { THEMES, type ThemeDefinition } from "@/lib/canvas/theme-utils";
+
+function ThemeColorSwatches({ colors }: { colors: [string, string, string] }) {
+  return (
+    <div className="flex gap-0.5">
+      {colors.map((color, index) => (
+        <Avatar key={index} className="size-3.5">
+          <AvatarFallback style={{ backgroundColor: color }} />
+        </Avatar>
+      ))}
+    </div>
+  );
+}
 
 interface ThemeSelectorProps {
   currentTheme: string;
@@ -102,6 +115,7 @@ export function ThemeSelector({
               onClick={() => handleThemeSelect(theme)}
               disabled={isApplying}
             >
+              <ThemeColorSwatches colors={theme.colors} />
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium">{theme.name}</div>
               </div>
