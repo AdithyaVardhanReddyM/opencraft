@@ -346,6 +346,17 @@ export function useChatStreaming({
       currentCount > lastConvexMessageCountRef.current &&
       lastMessage?.role === "assistant"
     ) {
+      // Track agent response completion
+      if (typeof window !== "undefined" && window.pendo?.trackAgent) {
+        window.pendo.trackAgent("agent_response", {
+          agentId: "wYiI5wkyld0XBfcxyNqOovEQ0Rg",
+          conversationId: screenId || "",
+          messageId: lastMessage._id,
+          content: stripFilesSummary(lastMessage.content),
+          modelUsed: currentModelIdRef.current || "",
+        });
+      }
+
       // Response received! Clear loading state
       setIsWaitingForResponse(false);
       setStreamingSteps([]);
@@ -353,7 +364,7 @@ export function useChatStreaming({
     }
 
     lastConvexMessageCountRef.current = currentCount;
-  }, [convexMessages, isWaitingForResponse]);
+  }, [convexMessages, isWaitingForResponse, screenId]);
 
   // Use our own loading state based on waiting for response
   const isLoading = isWaitingForResponse;
@@ -494,8 +505,16 @@ export function useChatStreaming({
   // Retry last message
   const retryLastMessage = useCallback(() => {
     if (!error?.canRetry || !error.originalMessage) return;
+    if (typeof window !== "undefined" && window.pendo?.trackAgent) {
+      window.pendo.trackAgent("user_reaction", {
+        agentId: "wYiI5wkyld0XBfcxyNqOovEQ0Rg",
+        conversationId: screenId || "",
+        messageId: `retry_${Date.now()}`,
+        content: "retry",
+      });
+    }
     sendMessage(error.originalMessage, lastOptionsRef.current);
-  }, [error, sendMessage]);
+  }, [error, sendMessage, screenId]);
 
   return {
     messages,
