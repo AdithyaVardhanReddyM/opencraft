@@ -181,6 +181,15 @@ export function AISidebar({
       suggestion_text: suggestion,
       screen_id: selectedScreenId || "",
     });
+    if (typeof window !== "undefined" && window.pendo?.trackAgent) {
+      window.pendo.trackAgent("prompt", {
+        agentId: "wYiI5wkyld0XBfcxyNqOovEQ0Rg",
+        conversationId: selectedScreenId || "",
+        messageId: crypto.randomUUID(),
+        content: suggestion,
+        suggestedPrompt: true,
+      });
+    }
     sendMessage(suggestion);
   };
 
@@ -205,10 +214,22 @@ export function AISidebar({
           : `Replicate this element:\n\n${formattedExtension}`;
       }
 
+      if (typeof window !== "undefined" && window.pendo?.trackAgent) {
+        window.pendo.trackAgent("prompt", {
+          agentId: "wYiI5wkyld0XBfcxyNqOovEQ0Rg",
+          conversationId: selectedScreenId || "",
+          messageId: crypto.randomUUID(),
+          content: finalMessage,
+          modelUsed: modelId,
+          suggestedPrompt: false,
+          fileUploaded: images.length > 0,
+        });
+      }
+
       // Pass modelId and images to sendMessage
       sendMessage(finalMessage, { modelId, images });
     },
-    [sendMessage]
+    [sendMessage, selectedScreenId]
   );
 
   // Map streaming status to chat input status
