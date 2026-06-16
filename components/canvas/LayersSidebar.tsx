@@ -295,14 +295,12 @@ export function LayersSidebar({
         <div className="relative flex flex-col gap-3 p-3 bg-muted/5">
           <div className="absolute bottom-0 left-4 right-4 h-px bg-border/40" />
           <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                Layers
-              </h3>
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-muted px-1 text-[10px] font-medium text-muted-foreground">
-                {shapes.length}
-              </span>
-            </div>
+            <h3 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+              Layers
+            </h3>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground tabular-nums">
+              {shapes.length} {shapes.length === 1 ? "layer" : "layers"}
+            </span>
           </div>
           <SearchBar
             value={searchQuery}

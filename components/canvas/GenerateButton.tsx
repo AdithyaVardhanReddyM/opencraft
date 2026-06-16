@@ -29,14 +29,10 @@ export function GenerateButton({
     setMounted(true);
   }, []);
 
-  // Calculate frame's top-right corner in screen coordinates
+  // Frame's top-right corner in screen coordinates
   const frameRightScreenX =
     (frame.x + frame.w) * viewport.scale + viewport.translate.x;
   const frameTopScreenY = frame.y * viewport.scale + viewport.translate.y;
-
-  // Position button above the frame with fixed offset (not scaled)
-  const buttonScreenX = frameRightScreenX;
-  const buttonScreenY = frameTopScreenY - 44; // 44px above frame top
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -44,22 +40,31 @@ export function GenerateButton({
     onGenerate(frame, containedShapes);
   };
 
+  // The button scales together with the canvas (viewport.scale) so it stays
+  // proportional to the frame as you zoom — just like the "Frame N" label,
+  // which lives inside the scaled transform container. The anchor sits at the
+  // frame's top-right corner and the button hangs above it, right-aligned.
   const buttonContent = (
     <div
-      className="fixed z-50 pointer-events-auto scale-100"
+      className="fixed z-50 pointer-events-auto"
       style={{
-        left: buttonScreenX,
-        top: buttonScreenY,
-        transform: "translateX(-100%)", // Align right edge with frame right edge
+        left: frameRightScreenX,
+        top: frameTopScreenY,
+        transform: `scale(${viewport.scale})`,
+        transformOrigin: "0 0",
       }}
     >
-      <button
-        onClick={handleClick}
-        className="flex items-center gap-2 h-9 px-4 rounded-[10px] bg-background hover:bg-muted text-muted-foreground hover:text-foreground shadow-lg backdrop-blur-sm transition-all duration-200"
-      >
-        <Brush className="h-4 w-4" />
-        <span className="text-sm font-medium">Generate Design</span>
-      </button>
+      <div className="absolute bottom-0 right-0 -translate-y-1.5">
+        <button
+          onClick={handleClick}
+          className="flex items-center gap-1.5 h-7 px-2.5 rounded-lg bg-background hover:bg-muted text-muted-foreground hover:text-foreground shadow-lg backdrop-blur-sm transition-all duration-200"
+        >
+          <Brush className="h-3 w-3" />
+          <span className="text-xs font-medium whitespace-nowrap">
+            Generate Design
+          </span>
+        </button>
+      </div>
     </div>
   );
 

@@ -5,7 +5,17 @@ import { useAgents } from "@inngest/use-agent";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
-import { getStatusTextForEvent } from "@/lib/streaming-utils";
+import {
+  getStatusTextForEvent,
+  getActivityForToolPart,
+  type ToolCallPartLike,
+} from "@/lib/streaming-utils";
+
+/** The model's live "thinking" stream for a message. */
+export interface MessageReasoning {
+  content: string;
+  status: "streaming" | "complete";
+}
 
 export interface ChatMessage {
   id: string;
@@ -16,6 +26,7 @@ export interface ChatMessage {
   isStreaming?: boolean;
   imageIds?: string[];
   modelId?: string;
+  reasoning?: MessageReasoning;
 }
 
 export interface UseChatStreamingOptions {
@@ -53,6 +64,8 @@ export interface UseChatStreamingReturn {
   status: StreamingStatus;
   statusText: string;
   streamingSteps: StreamingStep[];
+  /** Concrete current action (e.g. "Writing app/page.tsx"), derived from the live tool-call. */
+  currentActivity: string;
   error: { message: string; canRetry: boolean } | null;
   sendMessage: (content: string, options?: SendMessageOptions) => Promise<void>;
   retryLastMessage: () => void;
@@ -285,9 +298,12 @@ export function useChatStreaming({
     return agentMessages
       .filter((msg) => msg.role === "assistant") // Only assistant messages from streaming
       .map((msg) => {
-        // Extract text content from parts
+        // Extract text + reasoning content from parts
         let textContent = "";
         let isStreaming = false;
+        let reasoningContent = "";
+        let reasoningStreaming = false;
+        let hasReasoning = false;
 
         for (const part of msg.parts) {
           if (part.type === "text") {
@@ -301,6 +317,18 @@ export function useChatStreaming({
             if (textPart.status === "streaming") {
               isStreaming = true;
             }
+          } else if (part.type === "reasoning") {
+            // The model's live "thinking" stream (reasoning models only).
+            const reasoningPart = part as {
+              type: "reasoning";
+              content?: string;
+              status?: string;
+            };
+            hasReasoning = true;
+            reasoningContent += reasoningPart.content || "";
+            if (reasoningPart.status === "streaming") {
+              reasoningStreaming = true;
+            }
           }
         }
 
@@ -310,8 +338,34 @@ export function useChatStreaming({
           content: stripFilesSummary(textContent),
           timestamp: msg.timestamp,
           isStreaming,
+          reasoning: hasReasoning
+            ? {
+                content: reasoningContent,
+                status: reasoningStreaming
+                  ? ("streaming" as const)
+                  : ("complete" as const),
+              }
+            : undefined,
         };
       });
+  }, [agentMessages]);
+
+  // Derive the concrete current action from the latest in-progress tool-call
+  // part (e.g. "Writing app/page.tsx", "Running: npm install"). Scans newest
+  // first and ignores completed tool calls so the detail reflects live work.
+  const currentActivity = useMemo(() => {
+    for (let i = agentMessages.length - 1; i >= 0; i--) {
+      const msg = agentMessages[i];
+      if (msg.role !== "assistant") continue;
+      for (let j = msg.parts.length - 1; j >= 0; j--) {
+        const part = msg.parts[j] as ToolCallPartLike;
+        if (part?.type !== "tool-call") continue;
+        if (part.state === "output-available") continue; // already finished
+        const activity = getActivityForToolPart(part);
+        if (activity) return activity;
+      }
+    }
+    return "";
   }, [agentMessages]);
 
   // Merge messages: use Convex for persisted history, agent for current streaming
@@ -543,6 +597,7 @@ export function useChatStreaming({
     status,
     statusText,
     streamingSteps,
+    currentActivity,
     error: error ? { message: error.message, canRetry: error.canRetry } : null,
     sendMessage,
     retryLastMessage,

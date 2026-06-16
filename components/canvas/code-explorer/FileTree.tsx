@@ -154,10 +154,11 @@ const FileTreeNode = memo(function FileTreeNode({
         onClick={handleClick}
         className={cn(
           "w-full flex items-center gap-1.5 px-2 py-1 text-left text-[13px]",
-          "hover:bg-muted/40 transition-all duration-150 rounded-md mx-1",
+          "transition-colors duration-150 rounded-md mx-1",
           "group",
-          isSelected && "bg-primary/10 text-primary hover:bg-primary/15",
-          !isSelected && "text-foreground/80"
+          isSelected
+            ? "bg-primary/10 text-primary hover:bg-primary/15"
+            : "text-foreground/80 hover:bg-muted/50 hover:text-foreground"
         )}
         style={{ paddingLeft: `${depth * 12 + 6}px` }}
       >

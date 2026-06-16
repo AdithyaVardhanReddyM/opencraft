@@ -5,7 +5,6 @@ import {
   MessageSquare,
   AlertCircle,
   RefreshCw,
-  Sparkles,
   Copy,
   Check,
   ImageIcon,
@@ -52,6 +51,7 @@ import {
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { StreamingIndicator } from "@/components/canvas/StreamingIndicator";
+import { ReasoningPanel } from "@/components/canvas/ReasoningPanel";
 import { useChatStreaming, type ChatMessage } from "@/hooks/use-chat-streaming";
 import { CodeExplorer } from "@/components/canvas/code-explorer";
 import { EditModeProvider } from "@/contexts/EditModeContext";
@@ -129,6 +129,7 @@ export function AISidebar({
   initialPrompt,
   initialModelId,
   onInitialDataConsumed,
+  onGeneratingChange,
 }: {
   isOpen: boolean;
   onClose?: () => void;
@@ -141,6 +142,8 @@ export function AISidebar({
   initialPrompt?: string;
   initialModelId?: string;
   onInitialDataConsumed?: () => void;
+  /** Notifies the parent when the agent starts/stops generating for the selected screen. */
+  onGeneratingChange?: (isGenerating: boolean) => void;
 }) {
   const [activeTab, setActiveTab] = useState("chat");
 
@@ -167,6 +170,7 @@ export function AISidebar({
     status,
     statusText,
     streamingSteps,
+    currentActivity,
     error,
     sendMessage,
     retryLastMessage,
@@ -174,6 +178,12 @@ export function AISidebar({
     screenId: selectedScreenId,
     projectId,
   });
+
+  // Surface the generating state to the parent (canvas) so it can show the
+  // border beam on the screen shape while the agent works.
+  useEffect(() => {
+    onGeneratingChange?.(isLoading);
+  }, [isLoading, onGeneratingChange]);
 
   const handleSuggestionClick = (suggestion: string) => {
     if (!canGenerate) return;
@@ -285,17 +295,17 @@ export function AISidebar({
         >
           {/* Header with tabs */}
           <div className="relative flex items-center justify-center pt-3 pb-1 px-3 z-10">
-            <TabsList className="relative h-10 bg-muted/30 backdrop-blur-2xl saturate-150 border border-border/20 shadow-sm rounded-full p-1 gap-1 grid grid-cols-3">
+            <TabsList className="relative h-10 bg-muted/40 border border-border/70 shadow-sm rounded-full p-1 gap-1 grid grid-cols-3">
               {["chat", "edit", "code"].map((tab) => (
                 <TabsTrigger
                   key={tab}
                   value={tab}
-                  className="relative z-10 rounded-full px-4 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 data-[state=active]:text-foreground data-[state=active]:bg-transparent"
+                  className="relative z-10 rounded-full px-4 py-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors duration-200 data-[state=active]:text-primary data-[state=active]:bg-transparent"
                 >
                   {activeTab === tab && (
                     <motion.div
                       layoutId="active-tab"
-                      className="absolute inset-0 bg-background/60 dark:bg-white/8 backdrop-blur-sm rounded-full -z-10 shadow-xs ring-1 ring-white/10 dark:ring-white/10"
+                      className="absolute inset-0 -z-10 rounded-full bg-white shadow-sm ring-1 ring-primary/20"
                       transition={{
                         type: "spring",
                         stiffness: 300,
@@ -333,6 +343,7 @@ export function AISidebar({
                     statusText={statusText || "Processing..."}
                     steps={streamingSteps}
                     isVisible={isLoading}
+                    activeDetail={currentActivity}
                   />
                   {error?.canRetry && !isLoading && (
                     <ErrorRetryButton onRetry={retryLastMessage} />
@@ -580,19 +591,18 @@ function ChatMessageItem({ message }: { message: ChatMessage }) {
             isError ? "text-destructive" : "text-foreground"
           )}
         >
+          {message.reasoning && (
+            <ReasoningPanel reasoning={message.reasoning} />
+          )}
           <MessageResponse>{message.content}</MessageResponse>
           {isStreaming && (
             <span className="inline-block w-2 h-4 ml-0.5 bg-foreground/70 animate-pulse" />
           )}
         </div>
       </div>
-      {/* Credits and time footer - only show when not streaming */}
+      {/* Time footer - only show when not streaming */}
       {!isError && !isStreaming && (
         <div className="flex items-center gap-2 ml-8.5 text-[10px] text-muted-foreground/60">
-          <span className="flex items-center gap-1">
-            <Sparkles className="h-2.5 w-2.5" />5 credits
-          </span>
-          <span className="text-muted-foreground/30">•</span>
           <span>{formatMessageTime(message.timestamp)}</span>
         </div>
       )}

@@ -84,6 +84,31 @@ export function BoundingBox({
 
   const isLineOrArrow = shape.type === "arrow" || shape.type === "line";
 
+  // Screen shapes render a live iframe in their interior. An iframe is a
+  // separate browsing context, so any pointer event that lands on it is
+  // swallowed before it can reach the canvas's onPointerDown — which means the
+  // canvas move logic never starts and the screen can't be dragged. To restore
+  // dragging, we lay a thin draggable "frame" over the screen's perimeter. The
+  // bounding box sits above the iframe in the DOM, so these strips intercept the
+  // pointerdown at the edges and (crucially) let it bubble to the canvas, which
+  // then starts the move via hit-testing. We use inline pointerEvents (not the
+  // `pointer-events-auto` class) so the canvas does not treat them as
+  // interactive UI and skip them — see isInteractiveTarget in use-infinite-canvas.
+  const showMoveBorder = shape.type === "screen";
+  // Keep the grab region a roughly constant on-screen size regardless of zoom,
+  // capped so it never eats more than a quarter of a small screen's interior.
+  const moveBorderThickness = Math.min(
+    14 / viewport.scale,
+    bounds.w / 4,
+    bounds.h / 4
+  );
+  const moveStripStyle: React.CSSProperties = {
+    position: "absolute",
+    pointerEvents: "auto",
+    cursor: "move",
+    // Transparent — the existing selection border already shows the edge.
+  };
+
   const handlePointerDown = (corner: ResizeHandle, e: React.PointerEvent) => {
     e.stopPropagation();
     e.preventDefault();
@@ -190,6 +215,52 @@ export function BoundingBox({
           borderColor: "oklch(0.5665 0.1947 256.1696)",
         }}
       />
+
+      {/* Draggable move-border for screen shapes — a thin frame over the
+          perimeter that lets the user grab the screen and reposition it even
+          when an interactive iframe fills the interior. Rendered before the
+          resize handles so the corner/edge handles stay on top and keep resize
+          priority. */}
+      {showMoveBorder && (
+        <>
+          <div
+            style={{
+              ...moveStripStyle,
+              left: 0,
+              top: 0,
+              width: "100%",
+              height: moveBorderThickness,
+            }}
+          />
+          <div
+            style={{
+              ...moveStripStyle,
+              left: 0,
+              bottom: 0,
+              width: "100%",
+              height: moveBorderThickness,
+            }}
+          />
+          <div
+            style={{
+              ...moveStripStyle,
+              left: 0,
+              top: 0,
+              width: moveBorderThickness,
+              height: "100%",
+            }}
+          />
+          <div
+            style={{
+              ...moveStripStyle,
+              right: 0,
+              top: 0,
+              width: moveBorderThickness,
+              height: "100%",
+            }}
+          />
+        </>
+      )}
 
       {/* Corner handles */}
       {/* Northwest */}

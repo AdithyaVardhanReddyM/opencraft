@@ -66,7 +66,11 @@ export function CodeViewer({
 
         const html = await codeToHtml(content, {
           lang: language,
-          theme: "one-dark-pro",
+          themes: {
+            light: "github-light",
+            dark: "github-dark",
+          },
+          defaultColor: "light",
         });
 
         if (mountedRef.current) {
@@ -95,7 +99,7 @@ export function CodeViewer({
   // Empty state - no file selected
   if (!filePath && !isLoading && !error) {
     return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8">
+      <div className="relative flex flex-col items-center justify-center h-full text-center p-8">
         {/* Decorative background pattern */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-primary/5 rounded-full blur-3xl" />
@@ -219,7 +223,7 @@ export function CodeViewer({
       </div>
 
       {/* Code content */}
-      <div className="flex-1 overflow-auto scrollbar-thin bg-[#282c34]/30">
+      <div className="flex-1 overflow-auto scrollbar-thin bg-background">
         {isHighlighting ? (
           <div className="flex items-center justify-center h-full">
             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/50" />
@@ -227,7 +231,7 @@ export function CodeViewer({
         ) : highlightedHtml ? (
           <div
             className={cn(
-              "text-sm [&>pre]:m-0 [&>pre]:p-4 [&>pre]:bg-transparent!",
+              "text-sm [&>pre]:m-0 [&>pre]:p-4",
               "[&>pre]:overflow-x-auto [&_code]:font-mono [&_code]:text-[13px] [&_code]:leading-relaxed",
               "scrollbar-thin"
             )}

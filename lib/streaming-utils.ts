@@ -13,7 +13,9 @@ export type AgentKitEventType =
   | "text.delta"
   | "part.completed"
   | "tool_call.arguments.delta"
-  | "tool_call.output.delta";
+  | "tool_call.output.delta"
+  | "reasoning"
+  | "reasoning.delta";
 
 export interface AgentKitEvent {
   event: string;
@@ -70,6 +72,12 @@ export function getStatusTextForEvent(event: AgentKitEvent): string {
   switch (eventType) {
     case "run.started":
       return "Updating";
+
+    // Reasoning models emit these while "thinking" before any text/tool output.
+    // Surfacing "Thinking" here fills the otherwise-dead gap after run.started.
+    case "reasoning":
+    case "reasoning.delta":
+      return "Thinking";
 
     case "text.delta":
       return "Composing response";
@@ -211,4 +219,70 @@ export function getStreamingState(event: AgentKitEvent): StreamingState {
     status: mapEventToStatus(event),
     statusText: getStatusTextForEvent(event),
   };
+}
+
+/** Minimal shape of a streaming tool-call part from @inngest/use-agent. */
+export interface ToolCallPartLike {
+  type?: string;
+  toolName?: string;
+  state?: string;
+  input?: unknown;
+}
+
+/** Truncate a string to a max length with an ellipsis. */
+function truncate(value: string, max: number): string {
+  return value.length > max ? value.slice(0, max - 1) + "…" : value;
+}
+
+/**
+ * Builds a concrete, human-readable activity line from a live tool-call part.
+ * Shows the actual file being written or command running instead of a static
+ * label, so a long tool step reads as real progress. Tolerates partially
+ * streamed input (state "input-streaming"), returning null until a usable
+ * path/command is available.
+ */
+export function getActivityForToolPart(
+  part: ToolCallPartLike | null | undefined
+): string | null {
+  if (!part || part.type !== "tool-call") return null;
+  const input = (part.input ?? {}) as Record<string, unknown>;
+
+  switch (part.toolName) {
+    case "createOrUpdateFiles": {
+      const files = Array.isArray(input.files) ? input.files : [];
+      const firstPath = files
+        .map((f) =>
+          f && typeof f === "object" && "path" in f
+            ? (f as { path?: unknown }).path
+            : undefined
+        )
+        .find((p): p is string => typeof p === "string" && p.length > 0);
+      if (!firstPath) return null;
+      const extra = files.length - 1;
+      return extra > 0
+        ? `Writing ${truncate(firstPath, 40)} (+${extra} more)`
+        : `Writing ${truncate(firstPath, 48)}`;
+    }
+
+    case "terminal": {
+      const command = input.command;
+      if (typeof command !== "string" || command.length === 0) return null;
+      return `Running: ${truncate(command, 56)}`;
+    }
+
+    case "readFiles": {
+      const files = Array.isArray(input.files) ? input.files : [];
+      const firstPath = files.find(
+        (p): p is string => typeof p === "string" && p.length > 0
+      );
+      if (!firstPath) return null;
+      const extra = files.length - 1;
+      return extra > 0
+        ? `Reading ${truncate(firstPath, 40)} (+${extra} more)`
+        : `Reading ${truncate(firstPath, 48)}`;
+    }
+
+    default:
+      return null;
+  }
 }

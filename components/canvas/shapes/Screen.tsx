@@ -11,6 +11,8 @@ import {
 interface ScreenProps {
   shape: ScreenShape;
   isSelected: boolean;
+  /** True while the AI agent is actively generating code for this screen. */
+  isGenerating?: boolean;
   screenData?: {
     sandboxUrl?: string;
     sandboxId?: string;
@@ -18,8 +20,6 @@ interface ScreenProps {
   };
   onClick?: () => void;
 }
-
-const PRIMARY = "oklch(0.5665 0.1947 256.1696)";
 
 // Screen shapes are placed at half of their real device size, so render the
 // iframe at full device resolution and scale it down to fit — the page lays out
@@ -29,6 +29,7 @@ const IFRAME_SCALE = 0.5;
 export function Screen({
   shape,
   isSelected,
+  isGenerating = false,
   screenData,
   onClick,
 }: ScreenProps) {
@@ -87,12 +88,19 @@ export function Screen({
       }}
       onClick={onClick}
     >
+      {/* Soft outward bloom while generating — sits on the non-clipping wrapper
+          so the glow can extend past the screen edge. */}
+      {isGenerating && <div className="screen-beam-glow" aria-hidden />}
+
       {/* Screen surface — a clean floating artboard, no browser chrome */}
       <div
         className="relative h-full w-full overflow-hidden bg-white"
         style={{
+          // No blue ring here when selected — the canvas BoundingBox already
+          // draws the selection outline, so adding one produced a doubled line.
+          // Keep just the elevation shadow and a subtle hairline edge.
           boxShadow: isSelected
-            ? `0 0 0 2px ${PRIMARY}, 0 20px 48px -16px rgba(15, 23, 42, 0.30)`
+            ? "0 20px 48px -16px rgba(15, 23, 42, 0.30), 0 0 0 1px rgba(15, 23, 42, 0.06)"
             : "0 1px 2px rgba(15, 23, 42, 0.04), 0 16px 40px -16px rgba(15, 23, 42, 0.22), 0 0 0 1px rgba(15, 23, 42, 0.06)",
         }}
       >
@@ -134,6 +142,9 @@ export function Screen({
             onClick?.();
           }}
         />
+
+        {/* Animated border beam while the agent is generating for this screen */}
+        {isGenerating && <div className="screen-beam" aria-hidden />}
       </div>
     </div>
   );

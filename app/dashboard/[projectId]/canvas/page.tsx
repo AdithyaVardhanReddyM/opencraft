@@ -213,6 +213,11 @@ function CanvasContent({ projectId }: { projectId: string }) {
   // Sidebar states
   const [isLayersSidebarOpen, setIsLayersSidebarOpen] = useState(true);
 
+  // True while the agent is generating code for the currently-selected screen.
+  // Drives the animated border beam on that screen shape.
+  const [isSelectedScreenGenerating, setIsSelectedScreenGenerating] =
+    useState(false);
+
   // Delete screen modal state
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [screenToDelete, setScreenToDelete] = useState<{
@@ -592,6 +597,7 @@ function CanvasContent({ projectId }: { projectId: string }) {
         }
         initialModelId={generationContext ? DEFAULT_MODEL_ID : undefined}
         onInitialDataConsumed={() => setGenerationContext(null)}
+        onGeneratingChange={setIsSelectedScreenGenerating}
       />
 
       {/* Toolbar */}
@@ -730,6 +736,7 @@ function CanvasContent({ projectId }: { projectId: string }) {
                   key={shape.id}
                   shape={shape}
                   isSelected={isSelected}
+                  isGenerating={isSelected && isSelectedScreenGenerating}
                   screenData={screenData}
                   onClick={() => {
                     dispatchShapes({ type: "CLEAR_SELECTION" });

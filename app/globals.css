@@ -491,6 +491,13 @@
   background: oklch(0.6 0.01 100 / 0.3);
 }
 
+/* Shiki dual-theme: light by default, swap to dark colors under .dark */
+.dark .shiki,
+.dark .shiki span {
+  color: var(--shiki-dark) !important;
+  background-color: var(--shiki-dark-bg) !important;
+}
+
 /* Selection Styling */
 ::selection {
   background: var(--primary);
@@ -1063,4 +1070,81 @@ body:has(.landing-page) {
 html:has(.landing-page)::-webkit-scrollbar,
 body:has(.landing-page)::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Screen "border beam" — shown on a canvas screen shape while the
+   agent is generating code for it. A bright, colorful arc sweeps
+   around the perimeter (masked rotating conic gradient), plus a soft
+   outward bloom. Follows the same @property + mask-composite idiom as
+   the landing border gradients above.
+   ───────────────────────────────────────────────────────────── */
+@property --screen-beam-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+@keyframes screen-beam-spin {
+  to {
+    --screen-beam-angle: 360deg;
+  }
+}
+
+@keyframes screen-beam-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+/* The animated border band. Place inside the (overflow-hidden) screen
+   surface as an absolutely-positioned overlay. */
+.screen-beam {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 3px; /* beam thickness */
+  pointer-events: none;
+  z-index: 5;
+  /* Reveal only the border band */
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  /* A concentrated colorful arc; transparent elsewhere so it reads as a
+     comet beam travelling around the edge as the angle animates. */
+  background: conic-gradient(
+    from var(--screen-beam-angle),
+    transparent 0deg,
+    transparent 55deg,
+    #3b82f6 85deg,
+    #8b5cf6 105deg,
+    #ec4899 125deg,
+    #22d3ee 150deg,
+    transparent 185deg,
+    transparent 360deg
+  );
+  animation: screen-beam-spin 2.4s linear infinite;
+}
+
+/* Soft outward bloom. Place on the (non-clipping) outer wrapper so the
+   glow can extend beyond the screen edge. */
+.screen-beam-glow {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: 0 0 22px 1px rgba(139, 92, 246, 0.35),
+    0 0 44px 6px rgba(59, 130, 246, 0.18);
+  animation: screen-beam-pulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .screen-beam,
+  .screen-beam-glow {
+    animation: none;
+  }
 }

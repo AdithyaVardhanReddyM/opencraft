@@ -66,11 +66,11 @@ export function CodeExplorer({
   }
 
   return (
-    <div className="flex h-full scrollbar-thin">
+    <div className="flex h-full scrollbar-thin bg-background">
       {/* File Tree Panel - 30% width */}
-      <div className="w-[30%] min-w-[180px] border-r border-border/40 overflow-auto scrollbar-thin">
-        <div className="px-4 py-2.5 border-b border-border/40 bg-muted/10 sticky top-0 z-10 backdrop-blur-sm">
-          <span className="text-xs font-medium text-foreground/70">
+      <div className="w-[30%] min-w-[180px] border-r border-border/40 overflow-auto scrollbar-thin bg-muted/20">
+        <div className="px-4 py-2.5 border-b border-border/40 bg-muted/30 sticky top-0 z-10 backdrop-blur-sm">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             Explorer
           </span>
         </div>
@@ -89,7 +89,7 @@ export function CodeExplorer({
       </div>
 
       {/* Code Viewer Panel - 70% width */}
-      <div className="flex-1 min-w-[200px] overflow-hidden bg-muted/10 scrollbar-thin">
+      <div className="flex-1 min-w-[200px] overflow-hidden bg-background scrollbar-thin">
         <CodeViewer
           content={fileContent}
           filePath={selectedPath}

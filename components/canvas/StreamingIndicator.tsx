@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useMemo } from "react";
+import { memo, useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import { Shimmer } from "@/components/ai-elements/shimmer";
@@ -12,11 +12,17 @@ export interface StreamingIndicatorProps {
   statusText: string;
   steps: StreamingStep[];
   isVisible: boolean;
+  /** Concrete current action (e.g. "Writing app/page.tsx") shown under the active step. */
+  activeDetail?: string;
   className?: string;
 }
 
 // Number of recent steps to always show
 const VISIBLE_STEPS = 2;
+
+// Seconds on the active step before showing the elapsed counter / reassurance.
+const ELAPSED_VISIBLE_AFTER = 3;
+const REASSURE_AFTER = 20;
 
 /**
  * StreamingIndicator displays a compact, collapsible progress view
@@ -26,6 +32,7 @@ function StreamingIndicatorComponent({
   statusText,
   steps,
   isVisible,
+  activeDetail,
   className,
 }: StreamingIndicatorProps) {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -60,6 +67,26 @@ function StreamingIndicatorComponent({
   }, [deduplicatedSteps]);
 
   const hasHiddenSteps = hiddenSteps.length > 0;
+
+  // Track time spent on the current (active) step so a long-running step never
+  // looks frozen. Resets whenever a new step becomes active.
+  const lastStep = deduplicatedSteps[deduplicatedSteps.length - 1];
+  const isActivePending = !!lastStep && lastStep.status === "pending";
+
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!isVisible || !isActivePending) return;
+    // setNow is only called from the interval callback (not synchronously in
+    // the effect body); elapsed is clamped to >= 0 so a brand-new step never
+    // shows a stale/negative value before the first tick.
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [isVisible, isActivePending, lastStep?.id]);
+
+  const elapsedSec =
+    isActivePending && lastStep
+      ? Math.max(0, Math.floor((now - lastStep.timestamp.getTime()) / 1000))
+      : 0;
 
   if (!isVisible) return null;
 
@@ -141,13 +168,31 @@ function StreamingIndicatorComponent({
 
         {/* Always visible recent steps */}
         <div className="flex flex-col gap-1">
-          {visibleSteps.map((step, index) => (
-            <StepItem
-              key={step.id}
-              step={step}
-              isLast={index === visibleSteps.length - 1}
-            />
-          ))}
+          {visibleSteps.map((step, index) => {
+            const isLast = index === visibleSteps.length - 1;
+            return (
+              <StepItem
+                key={step.id}
+                step={step}
+                isLast={isLast}
+                elapsedSec={isLast ? elapsedSec : undefined}
+              />
+            );
+          })}
+
+          {/* Concrete current action (e.g. the file being written) */}
+          {isActivePending && activeDetail && (
+            <div className="ml-6 truncate font-mono text-[11px] text-muted-foreground/50">
+              {activeDetail}
+            </div>
+          )}
+
+          {/* Reassurance once a step has been running a while */}
+          {isActivePending && elapsedSec >= REASSURE_AFTER && (
+            <div className="ml-6 text-[11px] text-muted-foreground/40">
+              Still working — this can take a moment
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -158,11 +203,14 @@ interface StepItemProps {
   step: StreamingStep;
   isCompact?: boolean;
   isLast?: boolean;
+  elapsedSec?: number;
 }
 
-function StepItem({ step, isCompact, isLast }: StepItemProps) {
+function StepItem({ step, isCompact, isLast, elapsedSec }: StepItemProps) {
   const isPending = step.status === "pending";
   const showShimmer = isPending && isLast;
+  const showElapsed =
+    typeof elapsedSec === "number" && elapsedSec >= ELAPSED_VISIBLE_AFTER;
 
   return (
     <motion.div
@@ -198,6 +246,13 @@ function StepItem({ step, isCompact, isLast }: StepItemProps) {
           )}
         >
           {step.text}
+        </span>
+      )}
+
+      {/* Elapsed time on the active step so it never looks frozen */}
+      {showElapsed && (
+        <span className="shrink-0 text-[11px] tabular-nums text-muted-foreground/40">
+          {elapsedSec}s
         </span>
       )}
     </motion.div>
