@@ -139,7 +139,7 @@ export function useAutosave(
 
       pendo.track("canvas_state_saved", {
         project_id: projectId,
-        shapes_count: shapes.length,
+        shapes_count: data.shapes.ids.length,
         canvas_version: data.version,
       });
     } catch (err) {
