@@ -2,7 +2,7 @@
 
 import { use, useState, useCallback, useEffect } from "react";
 import { Shimmer } from "@/components/ai-elements/shimmer";
-import { useMutation, useQuery } from "convex/react";
+import { useMutation, useQuery, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { SCREEN_DEFAULTS } from "@/lib/canvas/shape-factories";
@@ -250,10 +250,15 @@ function CanvasContent({ projectId }: { projectId: string }) {
   const createScreenMutation = useMutation(api.screens.createScreen);
   const createFlowScreenMutation = useMutation(api.screens.createFlowScreen);
 
+  // Wait for Convex auth before querying so a direct load/refresh right after
+  // sign-in doesn't throw "Not authenticated" before the token reaches Convex.
+  const { isAuthenticated } = useConvexAuth();
+
   // Query all screens for this project to get their data (sandboxUrl, title, etc.)
-  const screensData = useQuery(api.screens.getScreensByProject, {
-    projectId: projectId as Id<"projects">,
-  });
+  const screensData = useQuery(
+    api.screens.getScreensByProject,
+    isAuthenticated ? { projectId: projectId as Id<"projects"> } : "skip"
+  );
 
   // Map of Convex screen _id -> screen doc, used to resolve a flow child's parent.
   const screensById = new Map((screensData ?? []).map((s) => [s._id, s]));

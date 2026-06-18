@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useOptimistic, useTransition } from "react";
-import { useQuery } from "convex/react";
+import { useQuery, useConvexAuth } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { sortProjects, ProjectSortOption } from "@/lib/project-utils";
 import { LoadingSkeleton } from "@/components/dashboard/LoadingSkeleton";
@@ -36,8 +36,16 @@ export function ProjectsGrid({
   // Transition for optimistic updates
   const [, startTransition] = useTransition();
 
+  // Wait for Convex to finish authenticating before querying. Right after
+  // sign-in/sign-up the Clerk session exists but its token hasn't reached
+  // Convex yet; querying during that window throws "Not authenticated".
+  const { isAuthenticated } = useConvexAuth();
+
   // Fetch all projects for the authenticated user
-  const projects = useQuery(api.projects.getAllProjects);
+  const projects = useQuery(
+    api.projects.getAllProjects,
+    isAuthenticated ? {} : "skip"
+  );
 
   // Optimistic state for immediate UI updates
   const [optimisticProjects, setOptimisticProjects] = useOptimistic<
