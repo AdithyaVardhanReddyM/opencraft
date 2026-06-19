@@ -104,6 +104,8 @@ export const updateScreen = mutation({
     screenId: v.id("screens"),
     sandboxUrl: v.optional(v.string()),
     files: v.optional(v.any()),
+    fileMeta: v.optional(v.any()),
+    recentEdits: v.optional(v.array(v.string())),
     title: v.optional(v.string()),
     theme: v.optional(v.string()),
     route: v.optional(v.string()),
@@ -130,6 +132,8 @@ export const updateScreen = mutation({
     const patch: {
       sandboxUrl?: string;
       files?: unknown;
+      fileMeta?: unknown;
+      recentEdits?: string[];
       title?: string;
       theme?: string;
       route?: string;
@@ -143,6 +147,12 @@ export const updateScreen = mutation({
     }
     if (args.files !== undefined) {
       patch.files = args.files;
+    }
+    if (args.fileMeta !== undefined) {
+      patch.fileMeta = args.fileMeta;
+    }
+    if (args.recentEdits !== undefined) {
+      patch.recentEdits = args.recentEdits;
     }
     if (args.title !== undefined) {
       patch.title = args.title;
@@ -273,6 +283,8 @@ export const internalUpdateScreen = internalMutation({
     sandboxUrl: v.optional(v.string()),
     sandboxId: v.optional(v.string()),
     files: v.optional(v.any()),
+    fileMeta: v.optional(v.any()),
+    recentEdits: v.optional(v.array(v.string())),
     title: v.optional(v.string()),
     route: v.optional(v.string()),
   },
@@ -288,6 +300,8 @@ export const internalUpdateScreen = internalMutation({
       sandboxUrl?: string;
       sandboxId?: string;
       files?: unknown;
+      fileMeta?: unknown;
+      recentEdits?: string[];
       title?: string;
       route?: string;
       updatedAt: number;
@@ -303,6 +317,12 @@ export const internalUpdateScreen = internalMutation({
     }
     if (args.files !== undefined) {
       patch.files = args.files;
+    }
+    if (args.fileMeta !== undefined) {
+      patch.fileMeta = args.fileMeta;
+    }
+    if (args.recentEdits !== undefined) {
+      patch.recentEdits = args.recentEdits;
     }
     if (args.title !== undefined) {
       patch.title = args.title;

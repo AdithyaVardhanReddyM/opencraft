@@ -13,8 +13,16 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     try {
-      const { screenId, sandboxUrl, sandboxId, files, title, route } =
-        await request.json();
+      const {
+        screenId,
+        sandboxUrl,
+        sandboxId,
+        files,
+        fileMeta,
+        recentEdits,
+        title,
+        route,
+      } = await request.json();
 
       if (!screenId) {
         return new Response(JSON.stringify({ error: "screenId is required" }), {
@@ -28,6 +36,8 @@ http.route({
         sandboxUrl,
         sandboxId,
         files,
+        fileMeta,
+        recentEdits,
         title,
         route,
       });

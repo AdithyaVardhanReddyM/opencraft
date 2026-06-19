@@ -24,28 +24,10 @@ export const AI_MODELS: AIModel[] = [
     providerSlug: "google",
     supportsVision: true,
   },
-
-  // Moonshot AI
-  {
-    id: "moonshotai/kimi-k2.7-code",
-    name: "Kimi K2.7 Code",
-    provider: "Moonshot AI",
-    providerSlug: "moonshotai",
-    supportsVision: true,
-  },
-
-  // MiniMax
-  {
-    id: "minimax/minimax-m3",
-    name: "MiniMax M3",
-    provider: "MiniMax",
-    providerSlug: "minimax",
-    supportsVision: true,
-  },
 ];
 
-/** Default model ID - Moonshot AI Kimi K2.7 Code */
-export const DEFAULT_MODEL_ID = "moonshotai/kimi-k2.7-code";
+/** Default model ID - Google Gemini 3.5 Flash (fast; reasoning capped to low effort in the proxy) */
+export const DEFAULT_MODEL_ID = "google/gemini-3.5-flash";
 
 /**
  * Get a model by its ID

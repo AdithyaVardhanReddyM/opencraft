@@ -55,6 +55,7 @@ export interface ImageAttachment {
 export interface SendMessageOptions {
   modelId?: string;
   images?: ImageAttachment[];
+  reasoningEnabled?: boolean;
 }
 
 export interface UseChatStreamingReturn {
@@ -94,6 +95,7 @@ interface ClientState {
   projectId: string;
   modelId?: string;
   imageUrls?: string[];
+  reasoningEnabled?: boolean; // Per-request reasoning toggle (default false)
 }
 
 /**
@@ -137,6 +139,7 @@ export function useChatStreaming({
   const lastOptionsRef = useRef<SendMessageOptions | undefined>(undefined);
   const currentModelIdRef = useRef<string | undefined>(undefined);
   const currentImageUrlsRef = useRef<string[]>([]);
+  const currentReasoningEnabledRef = useRef<boolean>(false);
 
   // Use the useAgents hook from @inngest/use-agent (note: plural)
   // Don't pass channelKey - let it use userId from AgentProvider (default behavior)
@@ -152,6 +155,7 @@ export function useChatStreaming({
       projectId: projectId || "",
       modelId: currentModelIdRef.current,
       imageUrls: currentImageUrlsRef.current,
+      reasoningEnabled: currentReasoningEnabledRef.current,
     }),
     onEvent: (event) => {
       const eventType = event.event;
@@ -462,7 +466,7 @@ export function useChatStreaming({
   const sendMessage = useCallback(
     async (content: string, options?: SendMessageOptions) => {
       const trimmedContent = content.trim();
-      const { modelId, images = [] } = options || {};
+      const { modelId, images = [], reasoningEnabled = false } = options || {};
 
       if (!trimmedContent && images.length === 0) return;
       if (isLoading) return;
@@ -553,6 +557,7 @@ export function useChatStreaming({
         // Update refs before sending so state() picks up the values
         currentModelIdRef.current = modelId;
         currentImageUrlsRef.current = imageAgentUrls;
+        currentReasoningEnabledRef.current = reasoningEnabled;
 
         // Send message via the useAgents hook with model and images in state
         // The state function will be called by useAgents to get current state

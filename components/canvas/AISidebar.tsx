@@ -10,6 +10,7 @@ import {
   ImageIcon,
   X,
   CheckIcon,
+  Brain,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
@@ -236,9 +237,10 @@ export function AISidebar({
         modelId: string;
         images: ImageAttachment[];
         extensionData?: CapturedElement;
+        reasoningEnabled?: boolean;
       }
     ) => {
-      const { modelId, images, extensionData } = options;
+      const { modelId, images, extensionData, reasoningEnabled } = options;
       if (!message.text.trim() && !extensionData && images.length === 0) return;
 
       // If extension data is present, format it for AI
@@ -262,8 +264,8 @@ export function AISidebar({
         });
       }
 
-      // Pass modelId and images to sendMessage
-      sendMessage(finalMessage, { modelId, images });
+      // Pass modelId, images, and the reasoning toggle to sendMessage
+      sendMessage(finalMessage, { modelId, images, reasoningEnabled });
     },
     [sendMessage, selectedScreenId]
   );
@@ -680,6 +682,7 @@ function ChatInput({
       modelId: string;
       images: ImageAttachment[];
       extensionData?: CapturedElement;
+      reasoningEnabled: boolean;
     }
   ) => void;
   status: ChatInputStatus;
@@ -700,6 +703,8 @@ function ChatInput({
     lastUsedModelId || DEFAULT_MODEL_ID
   );
   const [modelSelectorOpen, setModelSelectorOpen] = useState(false);
+  // Per-request reasoning toggle. Off by default — reasoning slows builds down.
+  const [reasoningEnabled, setReasoningEnabled] = useState(false);
   const [pendingImages, setPendingImages] = useState<ImageAttachment[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const initialDataProcessedRef = useRef(false);
@@ -863,6 +868,7 @@ function ChatInput({
         modelId: selectedModel,
         images: pendingImages,
         extensionData: extensionContent || undefined,
+        reasoningEnabled,
       });
       setInputValue("");
       setExtensionContent(null);
@@ -870,7 +876,7 @@ function ChatInput({
       pendingImages.forEach((img) => URL.revokeObjectURL(img.previewUrl));
       setPendingImages([]);
     },
-    [onSubmit, extensionContent, selectedModel, pendingImages]
+    [onSubmit, extensionContent, selectedModel, pendingImages, reasoningEnabled]
   );
 
   // Handle drag and drop
@@ -1049,6 +1055,25 @@ function ChatInput({
                   </ModelSelectorList>
                 </ModelSelectorContent>
               </ModelSelector>
+
+              {/* Reasoning toggle — OFF by default (reasoning slows builds down) */}
+              <PromptInputButton
+                onClick={() => setReasoningEnabled((v) => !v)}
+                aria-pressed={reasoningEnabled}
+                title={
+                  reasoningEnabled
+                    ? "Reasoning ON — more deliberate, slower"
+                    : "Reasoning OFF — faster builds"
+                }
+                className={
+                  reasoningEnabled
+                    ? "text-primary bg-primary/10 hover:bg-primary/15"
+                    : "text-muted-foreground"
+                }
+              >
+                <Brain className="size-4" />
+                <span className="text-xs">Reasoning</span>
+              </PromptInputButton>
             </PromptInputTools>
 
             <PromptInputSubmit

@@ -41,7 +41,13 @@ export default defineSchema({
     title: v.optional(v.string()), // Screen title (from AI summary)
     sandboxUrl: v.optional(v.string()), // E2B sandbox URL for iframe
     sandboxId: v.optional(v.string()), // E2B sandbox ID for persistence and lifecycle management
-    files: v.optional(v.any()), // Generated files JSON: { [path: string]: string }
+    files: v.optional(v.any()), // Generated files JSON: { [path: string]: string } — ground-truth sandbox mirror (NOT injected into the model context)
+    // Paths-only repo-map source. One entry per file: a short one-liner the agent
+    // emitted, plus status/timestamp. Drives the per-turn repo-map injected into the
+    // user message so the agent never re-discovers the file list — replaces the old
+    // scattered <files_summary> blobs that used to live inside each assistant message.
+    fileMeta: v.optional(v.any()), // Record<path, { description: string; status: "active" | "deleted"; updatedAt: number }>
+    recentEdits: v.optional(v.array(v.string())), // Paths touched on the previous turn — marked "▸ … ⟵ edited last turn" in the repo-map
     theme: v.optional(v.string()), // Selected theme ID (default, claude, vercel, etc.)
     // Flow fields: a "flow child" is a screen that shares its parent's sandbox and
     // displays a different route (page) of the same app — used to model user flows.

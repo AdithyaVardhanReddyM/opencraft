@@ -14,6 +14,18 @@ export interface ConvexMessage {
 }
 
 /**
+ * One repo-map entry: the agent's one-liner for a file, plus lifecycle status.
+ * Stored on the screen (screen.fileMeta) and used to render the per-turn repo-map.
+ */
+export interface FileMetaEntry {
+  description: string;
+  status: "active" | "deleted";
+  updatedAt: number;
+}
+
+export type FileMeta = Record<string, FileMetaEntry>;
+
+/**
  * Screen record from Convex database
  */
 export interface ConvexScreen {
@@ -23,7 +35,9 @@ export interface ConvexScreen {
   title?: string;
   sandboxUrl?: string;
   sandboxId?: string;
-  files?: Record<string, string>;
+  files?: Record<string, string>; // Ground-truth sandbox mirror — NOT injected into the model context
+  fileMeta?: FileMeta; // Source of the paths-only repo-map one-liners
+  recentEdits?: string[]; // Paths touched last turn (for the "▸ … ⟵ edited last turn" marker)
   parentScreenId?: string; // Set on flow children; references the originating screen
   route?: string; // Route (page) this screen displays, e.g. "/checkout"
   createdAt: number;
@@ -106,12 +120,78 @@ export function shouldCreateNewSandbox(screen: ConvexScreen | null): boolean {
 }
 
 /**
- * Parse files_summary from message content
- * Extracts the content between <files_summary> tags
+ * A single file change reported by the agent in its final output, parsed from the
+ * per-file list inside <files_summary> (or <changes>). Feeds screen.fileMeta, which
+ * in turn drives the repo-map — so we no longer replay the raw block in history.
  */
-export function parseFilesSummary(content: string): string | null {
-  const match = content.match(/<files_summary>([\s\S]*?)<\/files_summary>/);
-  return match ? match[1].trim() : null;
+export interface FileChange {
+  path: string;
+  description: string;
+  status: "active" | "deleted";
+}
+
+/**
+ * Clean a candidate file path from a summary line: strip bullets/quotes/backticks
+ * and a leading "./" or "/". Returns undefined for prose (anything with whitespace)
+ * or non-path-looking text, so a stray sentence in the block can't pollute fileMeta.
+ */
+function normalizeFilePath(raw: string): string | undefined {
+  const p = raw
+    .trim()
+    .replace(/^[`'"]+|[`'"]+$/g, "")
+    .trim()
+    .replace(/^\.?\//, "");
+  if (!p || /\s/.test(p)) return undefined; // reject empty / prose
+  // Must look path-ish: contain a slash or end in a file extension.
+  if (!p.includes("/") && !/\.[a-zA-Z0-9]+$/.test(p)) return undefined;
+  return p;
+}
+
+/**
+ * Parse the agent's per-file change list (the body of <files_summary> / <changes>)
+ * into structured FileChange entries. Accepts lines like:
+ *   - app/page.tsx: landing page with hero and pricing
+ *   - deleted components/old-hero.tsx
+ *   - lib/utils.ts            (bare path, no description)
+ * Tags are optional; unparseable/prose lines are skipped.
+ */
+export function parseChanges(text: string | undefined | null): FileChange[] {
+  if (!text) return [];
+  const inner = text
+    .replace(/<\/?files_summary>/gi, "")
+    .replace(/<\/?changes>/gi, "")
+    .trim();
+
+  const changes: FileChange[] = [];
+  const seen = new Set<string>();
+
+  for (const rawLine of inner.split("\n")) {
+    const line = rawLine.trim().replace(/^[-*]\s*/, ""); // drop list bullet
+    if (!line) continue;
+
+    // Deletion markers: "deleted path" or "deleted: path".
+    const del = line.match(/^deleted[:\s]+(.+)$/i);
+    if (del) {
+      const path = normalizeFilePath(del[1]);
+      if (path && !seen.has(path)) {
+        seen.add(path);
+        changes.push({ path, description: "", status: "deleted" });
+      }
+      continue;
+    }
+
+    // "path: description" — split on the FIRST colon (paths have no colons).
+    const idx = line.indexOf(":");
+    const rawPath = idx === -1 ? line : line.slice(0, idx);
+    const description = idx === -1 ? "" : line.slice(idx + 1).trim();
+    const path = normalizeFilePath(rawPath);
+    if (path && !seen.has(path)) {
+      seen.add(path);
+      changes.push({ path, description, status: "active" });
+    }
+  }
+
+  return changes;
 }
 
 /**
@@ -181,4 +261,62 @@ export function deriveRouteFromFiles(
   // Prefer a page that wasn't in the parent (the one created for this flow).
   const fresh = pages.find((x) => !parentKeys.has(x.path));
   return (fresh ?? pages[0]).route;
+}
+
+/**
+ * The "active-screen anchor" — ~15 tokens that tell the agent exactly which page
+ * this thread edits, so its first read lands on the right file. Root screens edit
+ * app/page.tsx; flow children edit app/<route>/page.tsx.
+ */
+export function buildActiveAnchor(screen: ConvexScreen | null): string {
+  const route =
+    screen?.route && screen.route !== "/" ? screen.route : undefined;
+  const entryFile = route ? `app${route}/page.tsx` : "app/page.tsx";
+  return `Active screen: this conversation edits the page at route "${
+    route || "/"
+  }" → ${entryFile}. Scope edits to this page and the components it uses, unless the user explicitly asks otherwise.`;
+}
+
+/**
+ * Build the paths-only repo-map injected into the current user turn. Lists EVERY
+ * file (union of the on-disk mirror `files` and the described `fileMeta`) as
+ * `path — one-liner`, marking files edited last turn with "▸ … ⟵ edited last turn".
+ * Never includes file CONTENTS — only keys + the agent's own one-liners — so it
+ * stays flat in project size and cheap to send every turn. Deleted files are hidden.
+ */
+export function buildRepoMap(
+  files: Record<string, string> | undefined,
+  fileMeta: FileMeta | undefined,
+  recentEdits?: string[]
+): string {
+  const norm = (p: string) => p.replace(/^\.?\//, "");
+  const fileKeys = files || {};
+  const meta = fileMeta || {};
+
+  const paths = new Set<string>();
+  for (const p of Object.keys(fileKeys)) paths.add(norm(p));
+  for (const p of Object.keys(meta)) paths.add(norm(p));
+
+  const recent = new Set((recentEdits ?? []).map(norm));
+
+  const lines: string[] = [];
+  for (const path of [...paths].sort()) {
+    const entry = meta[path] || meta[`./${path}`];
+    if (entry?.status === "deleted") continue; // don't advertise removed files
+    const description = entry?.description ? ` — ${entry.description}` : "";
+    lines.push(
+      recent.has(path)
+        ? `▸ ${path}${description}   ⟵ edited last turn`
+        : `  ${path}${description}`
+    );
+  }
+
+  if (lines.length === 0) {
+    return "Repo map: (empty project — no files yet; build from scratch).";
+  }
+
+  return [
+    "Repo map — every file currently in this project (paths + one-liners). To edit a file, read it on demand; do NOT run ls/cat to re-discover the file list. Files marked ▸ were edited last turn.",
+    ...lines,
+  ].join("\n");
 }

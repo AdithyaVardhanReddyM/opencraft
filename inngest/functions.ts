@@ -17,8 +17,12 @@ import {
   shouldCreateNewSandbox,
   extractRoute,
   deriveRouteFromFiles,
+  buildActiveAnchor,
+  buildRepoMap,
+  parseChanges,
   type ConvexScreen,
   type ConvexMessage,
+  type FileMeta,
 } from "./utils";
 import z from "zod";
 
@@ -34,7 +38,7 @@ interface AgentState {
 // OpenRouter provider using OpenAI-compatible API
 // For reasoning models, we use a proxy that adds the reasoning parameter and
 // preserves reasoning_details across tool calls (required by OpenRouter)
-const openrouter = (config: { model: string }) => {
+const openrouter = (config: { model: string; reasoning?: boolean }) => {
   const needsReasoning = requiresReasoningTokens(config.model);
 
   // Use proxy for reasoning models, direct OpenRouter for others
@@ -44,8 +48,17 @@ const openrouter = (config: { model: string }) => {
       }/api/openrouter-proxy`
     : "https://openrouter.ai/api/v1";
 
+  // Per-request reasoning preference (default OFF). For proxy-routed reasoning
+  // models we encode "reasoning off" as a ":noreason" model suffix the proxy reads
+  // and strips before calling OpenRouter — the only channel we have from here to
+  // the proxy (AgentKit owns the outgoing request body).
+  const model =
+    needsReasoning && !config.reasoning
+      ? `${config.model}:noreason`
+      : config.model;
+
   return openai({
-    model: config.model,
+    model,
     apiKey: process.env.OPENROUTER_API_KEY,
     baseUrl,
   });
@@ -93,16 +106,16 @@ const extractTitle = (content: string): string => {
 // Auto-pause timeout for sandboxes (15 minutes)
 const SANDBOX_AUTO_PAUSE_TIMEOUT_MS = 15 * 60 * 1000;
 
-// Default model ID - Moonshot AI Kimi K2.7 Code
-const DEFAULT_MODEL_ID = "moonshotai/kimi-k2.7-code";
+// Default model ID - Google Gemini 3.5 Flash (fast; reasoning capped to low effort
+// in the OpenRouter proxy). Kimi-K2.7's slow non-streaming reasoning made simple
+// builds take minutes; Flash returns far quicker.
+const DEFAULT_MODEL_ID = "google/gemini-3.5-flash";
 
 // Models that require reasoning token storage (reasoning_details must be
 // preserved across tool calls per OpenRouter docs). All current models are
 // reasoning-capable, so all route through the reasoning proxy.
 const REASONING_MODELS = [
   "google/gemini-3.5-flash",
-  "moonshotai/kimi-k2.7-code",
-  "minimax/minimax-m3",
   "anthropic/claude-sonnet-4.6",
 ];
 
@@ -142,6 +155,95 @@ async function trackPendoEvent(
   }
 }
 
+// --- Conditional system-prompt capability blocks ---------------------------
+// These large blocks are only relevant to SOME builds. The agent runs one
+// inference per tool call, so re-sending an irrelevant block on every call is
+// pure latency. We keep them out of the core prompt and append only the ones a
+// given request actually needs (see the detection in runChatAgent).
+
+const IMAGE_GUIDANCE = `
+
+## Images
+- For any photographic content (hero/banner, gallery, card thumbnails, blog covers, backgrounds, product shots, team/testimonial photos) use REAL stock images that are RELEVANT to the page's subject. A skincare site shows skincare/beauty photos; a coffee shop shows coffee; a SaaS dashboard shows workspaces/people working. Random or unrelated images are NOT acceptable — relevance matters as much as quality.
+- NEVER hand-author SVG illustrations, inline data-URI graphics, "abstract art", or gradient/solid-color placeholder divs as a substitute for a real photo. This is the #1 thing to avoid.
+- Render stock images with a plain \`<img>\` tag, NOT \`next/image\`. This sidesteps all Next.js image-domain/config errors and works regardless of host. Always set explicit dimensions (width/height attributes or a fixed aspect-ratio + \`object-cover\` class) so layout never shifts, and a short descriptive \`alt\`.
+- How to pick RELEVANT photos — search the **Pexels API at GENERATION TIME** with the \`terminal\` tool, then hardcode the returned URLs:
+  - Do this EARLY and in BULK: run just **1–2 broad searches total** for the whole page with a high \`per_page\` so one call returns enough photos for every section. ONE search of 15 results usually covers a full landing page (hero + cards + gallery). Do NOT run a separate curl per image — that wastes your limited step budget and risks not finishing the page.
+    \`curl -s -H "Authorization: 3Wk3ZtcPCSiQxXZNJ2ZeX2xtSmXJeeNqjyUqfFo1nsrb06f7klZJGn06" "https://api.pexels.com/v1/search?query=<url-encoded keywords>&per_page=15&orientation=landscape"\`
+    - Use SPECIFIC keywords drawn from the page subject. Examples: \`skincare%20serum\`, \`face%20cream%20cosmetics\`, \`coffee%20latte\`, \`team%20meeting%20office\`. For tall/profile images use \`orientation=portrait\`; for square-ish use \`orientation=square\`.
+    - The response is JSON: \`{ "photos": [ { "src": { "original", "large2x", "large", "medium", "small", "landscape", "portrait", "tiny" }, "alt": "…" }, … ] }\`. Take the URLs from \`photos[].src\` — use \`src.large\` (or \`src.landscape\` for wide heroes, \`src.medium\`/\`src.small\` for cards/thumbnails). They look like \`https://images.pexels.com/photos/<id>/...jpeg?...\`.
+    - To list candidate URLs quickly you can pipe it: \`curl -s -H "Authorization: <key>" "https://api.pexels.com/v1/search?query=skincare%20serum&per_page=15" | grep -o '"large":"[^"]*"'\`.
+    - Assign a DIFFERENT photo from the returned list to each image slot so nothing repeats, and use the EXACT URLs returned by the API in your \`<img>\` tags. Also use each photo's \`alt\` text from the response for the \`<img alt>\`.
+  - CRITICAL: Pexels is for YOUR generation-time search only. Do NOT call the Pexels API (or put the API key) anywhere in the generated app code — bake the resolved \`images.pexels.com\` URLs in as static \`<img src>\` values. The final app must make no external API calls.
+  - If a Pexels search fails or returns nothing usable, fall back to keyword-matched LoremFlickr (always resolves): \`https://loremflickr.com/<width>/<height>/<comma-separated-keywords>?lock=<n>\` (different \`lock\` per image).
+  - **Avatars / profile pictures:** prefer Pexels portrait results; otherwise \`https://i.pravatar.cc/<size>?img=<1-70>\` (real faces) or \`https://api.dicebear.com/9.x/avataaars/svg?seed=<name>\` (illustrated).
+  - **Abstract/decorative backgrounds ONLY (where the subject genuinely doesn't matter):** \`https://picsum.photos/seed/<seed>/<width>/<height>\`. Do NOT use Picsum for content images — it returns photos unrelated to your topic (this is exactly what makes a page look wrong).
+  - **Labeled placeholder (only when no photo fits, e.g. a logo slot):** \`https://placehold.co/<width>x<height>?text=<label>\`.
+- Match the requested image size to the rendered box (e.g. a 3-column card grid → ~600x400 per card) so images stay crisp and load fast.
+- Icons remain Lucide React components — do not fetch icon images.`;
+
+const WEBPAGE_GUIDANCE = `
+
+## Webpage Recreation (scrapeWebpage)
+
+When the user provides a URL and asks to recreate, clone, redesign, or take inspiration from that page:
+
+1. **Call \`scrapeWebpage\` FIRST** with the URL, before writing any code. Build only after you have the scraped context.
+2. **Recreate structure from the returned HTML** — match the section layout, hierarchy, and ordering (navbar, hero, features, pricing, footer, etc.).
+3. **Use the copy from the returned markdown** — reuse the page's actual headings and text content, not lorem ipsum.
+4. **Match the styling exactly** — derive colors, fonts, sizes, and spacing from the HTML's class names and inline \`style\` attributes. DO NOT convert to the theme system. Use arbitrary Tailwind values like \`bg-[#0a0a0a]\`, \`text-[15px]\`, \`font-[Inter]\` to match precisely, unless the user explicitly asks to adapt it to the theme.
+5. **Images:** keep external image URLs found in the scraped HTML as-is. If a scraped image fails to load, fall back to a same-size Lorem Picsum image (\`https://picsum.photos/seed/<seed>/<w>/<h>\`) rather than a blank placeholder div.
+6. If \`scrapeWebpage\` returns an error (e.g. out of credits, rate limited, bad URL), tell the user what happened and ask how to proceed — do not fabricate the page from memory.
+7. **Stay step-efficient.** Recreation is large, so batch your work: write multiple files in a single \`createOrUpdateFiles\` call and avoid unnecessary re-reads. You MUST still finish with the \`<task_summary>\` block (after validation passes) exactly as described in "Final Output" — never stop after building without emitting it, even for big pages.
+
+The goal is a faithful, high-fidelity recreation of the real page — close to exact replication, not a loose theme-adapted interpretation.`;
+
+const CAPTURE_GUIDANCE = `
+
+## Captured Element Replication
+
+When a user sends a message containing \`[UNITSET_ELEMENT_CAPTURE]\` tags, they are providing HTML and CSS captured from a real webpage component they want you to replicate.
+
+### Recognition
+The captured data includes:
+- **HTML**: The complete outer HTML structure of the element
+- **Computed Styles**: All CSS styles as computed by the browser (actual pixel values, colors, etc.)
+- **Metadata**: Element tag name, dimensions, and position
+
+### Replication Guidelines — EXACT MATCH PRIORITY
+**IMPORTANT**: For captured elements, your goal is to replicate the component as EXACTLY as possible. This is different from normal requests where you use the theme system.
+
+1. **Use EXACT colors from the captured styles** — DO NOT convert to theme colors
+   - If the captured style shows \`background-color: rgb(59, 130, 246)\`, use \`bg-[#3b82f6]\` or the exact Tailwind color
+   - Preserve gradients, shadows, and opacity values exactly as captured
+   - Only use theme colors (bg-primary, etc.) if the user explicitly asks to adapt to the theme
+
+2. **Preserve exact dimensions and spacing**
+   - Use arbitrary values like \`w-[320px]\`, \`p-[18px]\` when needed for exact match
+   - Don't round to Tailwind scale if it changes the appearance
+
+3. **Handle images and assets**
+   - If the HTML contains \`<img>\` tags with external URLs, keep them as-is
+   - For background images, preserve the exact URL
+   - If images fail to load, use a placeholder div with the same dimensions
+
+4. **Analyze the HTML structure** and recreate it using React components
+   - Match the exact nesting and element structure
+   - Preserve class names as comments for reference
+
+5. **Use shadcn/ui components** only when they match the captured pattern exactly
+   - If the captured button looks different from shadcn Button, build a custom one
+
+6. **Preserve ALL visual details**
+   - Border radius, shadows, transitions
+   - Font sizes, weights, line heights
+   - Hover states if visible in styles
+
+7. **Make it functional** — add appropriate click handlers and state
+
+### Output
+Create a React component that is a PIXEL-PERFECT replica of the captured element. The goal is exact visual replication, not adaptation to the design system.`;
+
 // Chat function - directly invoke agent without network
 export const runChatAgent = inngest.createFunction(
   { id: "run-chat-agent" },
@@ -170,6 +272,10 @@ export const runChatAgent = inngest.createFunction(
       | undefined;
     const modelId = stateModelId || eventModelId || DEFAULT_MODEL_ID;
     const imageUrls = stateImageUrls || eventImageUrls || [];
+
+    // Per-request reasoning toggle (default OFF). Reasoning slows builds down, so
+    // it's opt-in from the UI switch; threaded to the proxy via openrouter().
+    const reasoningEnabled = userMessage?.state?.reasoningEnabled === true;
 
     // Step 0: Check generation limit before proceeding
     if (clerkId) {
@@ -377,6 +483,43 @@ You are adding a NEW page to an existing Next.js app that already has pages, com
     // the live "thinking" stream across the run's multiple inferences.
     let reasoningTurn = 0;
 
+    // Latency instrumentation: count inferences and time each one so the dev log
+    // shows whether a slow run is "a few very slow inferences" or "too many", and
+    // exactly which tools (if any) each inference called. This is what tells us if
+    // the agent is stuck thinking vs. actually building.
+    let inferenceCount = 0;
+    let lastInferenceAt = Date.now();
+    const runStartedAt = Date.now();
+
+    // Conditional system-prompt assembly: detect what THIS request actually needs
+    // so we only append the heavy capability blocks (image sourcing, webpage
+    // recreation, element capture) when relevant. Re-sending all of them on every
+    // one of the run's many inferences is pure latency — a simple build ("a
+    // calculator") needs none of them.
+    const msgText = message || "";
+    const hasCapture = /\[UNITSET_ELEMENT_CAPTURE\]/i.test(msgText);
+    const hasUrl = /https?:\/\/\S+/i.test(msgText);
+    // Utility/tool UIs rarely need photography; recreation and element-capture
+    // supply their own imagery. Otherwise bias toward including image guidance.
+    const utilityOnly =
+      /\b(calculator|to-?do|todo|timer|stopwatch|countdown|converter|dashboard|admin|data table|spreadsheet|kanban|settings|sign[- ]?in|login|chat app|calendar|clock|weather|crud)\b/i.test(
+        msgText
+      );
+    const mentionsImagery =
+      /\b(image|photo|picture|gallery|hero|banner|avatar|thumbnail|cover|background|stock photo|portrait|illustration)\b/i.test(
+        msgText
+      );
+    const needsImages =
+      !hasCapture && !hasUrl && (!utilityOnly || mentionsImagery);
+
+    const imageAddendum = needsImages ? IMAGE_GUIDANCE : "";
+    const webpageAddendum = hasUrl ? WEBPAGE_GUIDANCE : "";
+    const captureAddendum = hasCapture ? CAPTURE_GUIDANCE : "";
+
+    console.log(
+      `[runChatAgent] prompt blocks → images:${needsImages} webpage:${hasUrl} capture:${hasCapture} (flow:${isFlowBuild})`
+    );
+
     // UI Coding Agent
     const chatAgent = createAgent<AgentState>({
       name: "UI Coding Agent",
@@ -394,26 +537,39 @@ You are adding a NEW page to an existing Next.js app that already has pages, com
 
 ## Tools
 
+You receive a complete **repo map** (every file as \`path — one-liner\`) plus an **active-screen anchor** at the top of each turn. Trust them as the current state of the project — do NOT run \`ls\`/\`cat\` or otherwise re-discover the file list. Read a file only when you're about to edit it.
+
 ### 1. terminal
-Execute shell commands in the sandbox.
+Execute shell commands in the sandbox (package installs, validation).
 - Install packages: \`npm install <package> --yes\`
-- List files: \`ls -la\`
-- Read files: \`cat <filepath>\`
+- Validate: \`./node_modules/.bin/tsc --noEmit\`
 - NEVER run: npm run dev, npm run build, npm run start, next dev, next build, next start
+- Do NOT use it just to \`ls\`/\`cat\` the project — the repo map already lists every file.
 
 ### 2. createOrUpdateFiles
-Create or update files in the project.
+Write COMPLETE files. Use this for NEW files (or a genuine full rewrite). To modify an existing file, prefer editFile.
 - Paths MUST be relative (e.g., "app/page.tsx", "lib/utils.ts")
 - NEVER use absolute paths like "/home/user/..."
 - Can batch multiple files in one call
 
-### 3. readFiles
-Read file contents.
+### 3. editFile
+Make targeted search-and-replace edits to an EXISTING file without rewriting it. This is the DEFAULT for follow-up edits — it is far cheaper than re-emitting the whole file.
+- Read the file first (or rely on having just written it), then replace exact strings.
+- oldString must match byte-for-byte (including indentation) and be unique, unless replaceAll is true.
+- On "not found" / "not unique", re-read the file, add surrounding context to disambiguate, and retry.
+
+### 4. readFiles
+Read file contents on demand.
 - Use actual paths (e.g., "app/page.tsx", "components/ui/button.tsx")
 - NEVER use "@" alias in file paths — it will fail
-- Use this before modifying existing files
+- Read a file before you editFile it (unless you just wrote it). Guided by the repo map's ▸ markers + the active-screen anchor, this is usually ONE precise read.
 
-### 4. scrapeWebpage
+### 5. searchProject
+Grep/regex across the project — returns \`path:line — snippet\` for a symbol, className, import, or string WITHOUT reading whole files.
+- Use it to locate code before reading/editing (e.g. "where is the theme defined", "which files import Hero", "where is this color used").
+- Optionally scope to a directory (e.g. "components").
+
+### 6. scrapeWebpage
 Fetch a live webpage and get its HTML structure, design tokens (colors/fonts/spacing), markdown content, and links as text context.
 - ONLY use when the user provides a URL AND asks to recreate / clone / redesign / take inspiration from that specific page
 - Do NOT use it for generic build requests that don't reference a real URL
@@ -469,32 +625,19 @@ Fetch a live webpage and get its HTML structure, design tokens (colors/fonts/spa
 - Use PascalCase for components, kebab-case for filenames
 - Named exports for components
 
-### Design Principles
-- Clean, minimal, professional
-- Consistent spacing with Tailwind scale
-- Proper visual hierarchy
-- Responsive and accessible by default
-- Use Lucide React icons
-- For photographic content, use REAL stock images — see "Images" below
-
-### Images
-- For any photographic content (hero/banner, gallery, card thumbnails, blog covers, backgrounds, product shots, team/testimonial photos) use REAL stock images that are RELEVANT to the page's subject. A skincare site shows skincare/beauty photos; a coffee shop shows coffee; a SaaS dashboard shows workspaces/people working. Random or unrelated images are NOT acceptable — relevance matters as much as quality.
-- NEVER hand-author SVG illustrations, inline data-URI graphics, "abstract art", or gradient/solid-color placeholder divs as a substitute for a real photo. This is the #1 thing to avoid.
-- Render stock images with a plain \`<img>\` tag, NOT \`next/image\`. This sidesteps all Next.js image-domain/config errors and works regardless of host. Always set explicit dimensions (width/height attributes or a fixed aspect-ratio + \`object-cover\` class) so layout never shifts, and a short descriptive \`alt\`.
-- How to pick RELEVANT photos — search the **Pexels API at GENERATION TIME** with the \`terminal\` tool, then hardcode the returned URLs:
-  - Do this EARLY and in BULK: run just **1–2 broad searches total** for the whole page with a high \`per_page\` so one call returns enough photos for every section. ONE search of 15 results usually covers a full landing page (hero + cards + gallery). Do NOT run a separate curl per image — that wastes your limited step budget and risks not finishing the page.
-    \`curl -s -H "Authorization: 3Wk3ZtcPCSiQxXZNJ2ZeX2xtSmXJeeNqjyUqfFo1nsrb06f7klZJGn06" "https://api.pexels.com/v1/search?query=<url-encoded keywords>&per_page=15&orientation=landscape"\`
-    - Use SPECIFIC keywords drawn from the page subject. Examples: \`skincare%20serum\`, \`face%20cream%20cosmetics\`, \`coffee%20latte\`, \`team%20meeting%20office\`. For tall/profile images use \`orientation=portrait\`; for square-ish use \`orientation=square\`.
-    - The response is JSON: \`{ "photos": [ { "src": { "original", "large2x", "large", "medium", "small", "landscape", "portrait", "tiny" }, "alt": "…" }, … ] }\`. Take the URLs from \`photos[].src\` — use \`src.large\` (or \`src.landscape\` for wide heroes, \`src.medium\`/\`src.small\` for cards/thumbnails). They look like \`https://images.pexels.com/photos/<id>/...jpeg?...\`.
-    - To list candidate URLs quickly you can pipe it: \`curl -s -H "Authorization: <key>" "https://api.pexels.com/v1/search?query=skincare%20serum&per_page=15" | grep -o '"large":"[^"]*"'\`.
-    - Assign a DIFFERENT photo from the returned list to each image slot so nothing repeats, and use the EXACT URLs returned by the API in your \`<img>\` tags. Also use each photo's \`alt\` text from the response for the \`<img alt>\`.
-  - CRITICAL: Pexels is for YOUR generation-time search only. Do NOT call the Pexels API (or put the API key) anywhere in the generated app code — bake the resolved \`images.pexels.com\` URLs in as static \`<img src>\` values. The final app must make no external API calls.
-  - If a Pexels search fails or returns nothing usable, fall back to keyword-matched LoremFlickr (always resolves): \`https://loremflickr.com/<width>/<height>/<comma-separated-keywords>?lock=<n>\` (different \`lock\` per image).
-  - **Avatars / profile pictures:** prefer Pexels portrait results; otherwise \`https://i.pravatar.cc/<size>?img=<1-70>\` (real faces) or \`https://api.dicebear.com/9.x/avataaars/svg?seed=<name>\` (illustrated).
-  - **Abstract/decorative backgrounds ONLY (where the subject genuinely doesn't matter):** \`https://picsum.photos/seed/<seed>/<width>/<height>\`. Do NOT use Picsum for content images — it returns photos unrelated to your topic (this is exactly what makes a page look wrong).
-  - **Labeled placeholder (only when no photo fits, e.g. a logo slot):** \`https://placehold.co/<width>x<height>?text=<label>\`.
-- Match the requested image size to the rendered box (e.g. a 3-column card grid → ~600x400 per card) so images stay crisp and load fast.
-- Icons remain Lucide React components — do not fetch icon images.
+### Design Principles — make it distinctive, not templated
+Approach each build like a design lead giving THIS specific subject a visual identity that couldn't be mistaken for any other app. Make deliberate, opinionated choices grounded in the subject's world — avoid the generic "AI default" looks (cream + serif + terracotta; near-black with one acid accent; broadsheet hairlines) unless the brief explicitly asks for them.
+- **Ground it in the subject.** Decide (to yourself) the subject, its audience, and the page's single job, then derive layout, type, imagery, and copy from that — not from a generic skeleton. Use realistic, specific content, never lorem ipsum.
+- **The hero is a thesis.** Open with the most characteristic thing in the subject's world (a strong headline, a key visual, a live/interactive moment). The "big number + label + gradient accent" hero is the template answer — only use it if it is genuinely the best choice.
+- **Typography carries the personality.** Set a clear type scale with intentional sizes, weights, and spacing, and pair a characterful display treatment (used with restraint) with a clean body face. You may load fonts via \`next/font/google\` or a Google Fonts \`<link>\` in \`app/layout.tsx\`. Make the type itself memorable, not a neutral delivery vehicle.
+- **Structure encodes meaning.** Eyebrows, dividers, numbering, and section labels should reflect something true about the content. Don't add 01 / 02 / 03 markers unless the content is genuinely an ordered sequence.
+- **Motion, deliberately.** One orchestrated moment (a load reveal, a scroll-triggered transition, a hover micro-interaction) lands harder than scattered effects. Over-animation reads as AI-generated — keep it purposeful and respect \`prefers-reduced-motion\`.
+- **Spend boldness in ONE place.** Choose a single signature element to be the memorable thing and keep everything around it quiet and disciplined; cut decoration that doesn't serve the brief. Match execution to the vision — maximalist needs elaborate detail, minimal needs precise spacing and type.
+- **Distinctiveness within the theme.** Use the semantic theme tokens (bg-background, bg-primary, text-foreground, …) so the result adapts to the user's selected theme; express identity through composition, type, hierarchy, spacing, and the signature element rather than clashing hardcoded colors. Only hardcode colors when the user asks, or add a new theme token (per the Tailwind v4 rule above) when the design genuinely needs an accent.
+- **Copy is design material.** Write from the user's side of the screen: active voice, sentence case, specific over clever. A button says what happens ("Save changes", not "Submit") and keeps that name through the whole flow; error and empty states give direction, not mood.
+- **Quality floor (non-negotiable):** responsive down to mobile, visible keyboard focus, accessible contrast, Lucide React icons, consistent Tailwind spacing. Build complete, real layouts — no stubs or placeholders.
+- **Self-critique before finishing.** Ask whether the result reads like the generic default you'd produce for any similar prompt; if so, revise the part that's generic. Like Chanel's rule, remove one decorative accessory before you call it done.
+- If you need an incidental photo and no detailed image guidance appears below, use a REAL stock image in a plain \`<img>\` with explicit dimensions (e.g. a Pexels or LoremFlickr URL) — never fake it with an SVG or gradient div.
 
 ### Layout Requirements
 - Build complete layouts: navbar, sidebar, footer, content sections
@@ -503,11 +646,11 @@ Fetch a live webpage and get its HTML structure, design tokens (colors/fonts/spa
 
 ## Workflow
 1. Think step-by-step before coding
-2. Read existing files if unsure about contents
+2. Use the repo map + active-screen anchor to find the right file; use readFiles/searchProject only when you actually need a file's contents (don't ls/cat to re-discover what the map already lists)
 3. Check shadcn component APIs before using
 4. Write production-quality code
-5. Use createOrUpdateFiles for all file changes
-6. Use terminal for package installation
+5. createOrUpdateFiles for NEW files; editFile for changes to EXISTING files
+6. Use terminal for package installation and validation
 
 ## Validation (REQUIRED)
 After writing code in the files, you MUST run this validation command:
@@ -532,90 +675,20 @@ A short, descriptive title for this app/project (2-5 words, e.g., "Task Manager 
 </title>
 
 <task_summary>
-Write a comprehensive but concise summary in **markdown format**. Structure it as follows:
-
-**What I Built**
-A brief paragraph describing the main feature or component.
-
-**Key Features**
-- Feature 1 with brief explanation
-- Feature 2 with brief explanation
-- Feature 3 (add more as needed)
-
-**Design Highlights**
-- Notable UI/UX choices
-- Responsive behavior
-- Accessibility considerations (if any)
-
-Use proper markdown: **bold** for emphasis, bullet points for lists, and clear paragraph breaks.
-Keep it informative but not overly long — this is shown directly to the user.
+A short, human-readable summary of what you did this turn — 1-3 sentences of plain prose (NO headings or bullet lists). This is shown in chat and replayed as conversation history every turn, so keep it tight. Examples: "Built a SaaS landing page with a hero, feature grid, pricing, and footer." / "Made the hero headline larger and added a 'Watch demo' button that opens a video modal."
 </task_summary>
 
 <files_summary>
-List each file you created or modified with a one-line description:
-- path/to/file.tsx: Brief description of what this file does
+List EVERY file you created, updated, or deleted this turn, one per line as \`path: one-line description\`. For a deletion write \`deleted path\`. This list maintains the project's file map for future turns, so be complete and accurate (it is not shown to the user):
+- app/page.tsx: landing page with hero, features, pricing, footer
+- components/video-modal.tsx: demo video dialog (props: open, onClose)
+- deleted components/old-hero.tsx
 </files_summary>
 
 Do not include these tags until the task is 100% complete and validation has passed.
 
-## Webpage Recreation (scrapeWebpage)
-
-When the user provides a URL and asks to recreate, clone, redesign, or take inspiration from that page:
-
-1. **Call \`scrapeWebpage\` FIRST** with the URL, before writing any code. Build only after you have the scraped context.
-2. **Recreate structure from the returned HTML** — match the section layout, hierarchy, and ordering (navbar, hero, features, pricing, footer, etc.).
-3. **Use the copy from the returned markdown** — reuse the page's actual headings and text content, not lorem ipsum.
-4. **Match the styling exactly** — derive colors, fonts, sizes, and spacing from the HTML's class names and inline \`style\` attributes. DO NOT convert to the theme system. Use arbitrary Tailwind values like \`bg-[#0a0a0a]\`, \`text-[15px]\`, \`font-[Inter]\` to match precisely, unless the user explicitly asks to adapt it to the theme.
-5. **Images:** keep external image URLs found in the scraped HTML as-is. If a scraped image fails to load, fall back to a same-size Lorem Picsum image (\`https://picsum.photos/seed/<seed>/<w>/<h>\`) rather than a blank placeholder div.
-6. If \`scrapeWebpage\` returns an error (e.g. out of credits, rate limited, bad URL), tell the user what happened and ask how to proceed — do not fabricate the page from memory.
-7. **Stay step-efficient.** Recreation is large, so batch your work: write multiple files in a single \`createOrUpdateFiles\` call and avoid unnecessary re-reads. You MUST still finish with the \`<task_summary>\` block (after validation passes) exactly as described in "Final Output" — never stop after building without emitting it, even for big pages.
-
-The goal is a faithful, high-fidelity recreation of the real page — close to exact replication, not a loose theme-adapted interpretation.
-
-## Captured Element Replication
-
-When a user sends a message containing \`[UNITSET_ELEMENT_CAPTURE]\` tags, they are providing HTML and CSS captured from a real webpage component they want you to replicate.
-
-### Recognition
-The captured data includes:
-- **HTML**: The complete outer HTML structure of the element
-- **Computed Styles**: All CSS styles as computed by the browser (actual pixel values, colors, etc.)
-- **Metadata**: Element tag name, dimensions, and position
-
-### Replication Guidelines — EXACT MATCH PRIORITY
-**IMPORTANT**: For captured elements, your goal is to replicate the component as EXACTLY as possible. This is different from normal requests where you use the theme system.
-
-1. **Use EXACT colors from the captured styles** — DO NOT convert to theme colors
-   - If the captured style shows \`background-color: rgb(59, 130, 246)\`, use \`bg-[#3b82f6]\` or the exact Tailwind color
-   - Preserve gradients, shadows, and opacity values exactly as captured
-   - Only use theme colors (bg-primary, etc.) if the user explicitly asks to adapt to the theme
-
-2. **Preserve exact dimensions and spacing**
-   - Use arbitrary values like \`w-[320px]\`, \`p-[18px]\` when needed for exact match
-   - Don't round to Tailwind scale if it changes the appearance
-
-3. **Handle images and assets**
-   - If the HTML contains \`<img>\` tags with external URLs, keep them as-is
-   - For background images, preserve the exact URL
-   - If images fail to load, use a placeholder div with the same dimensions
-
-4. **Analyze the HTML structure** and recreate it using React components
-   - Match the exact nesting and element structure
-   - Preserve class names as comments for reference
-
-5. **Use shadcn/ui components** only when they match the captured pattern exactly
-   - If the captured button looks different from shadcn Button, build a custom one
-
-6. **Preserve ALL visual details**
-   - Border radius, shadows, transitions
-   - Font sizes, weights, line heights
-   - Hover states if visible in styles
-
-7. **Make it functional** — add appropriate click handlers and state
-
-### Output
-Create a React component that is a PIXEL-PERFECT replica of the captured element. The goal is exact visual replication, not adaptation to the design system.${flowSystemAddendum}`,
-      model: openrouter({ model: modelId }),
+${imageAddendum}${webpageAddendum}${captureAddendum}${flowSystemAddendum}`,
+      model: openrouter({ model: modelId, reasoning: reasoningEnabled }),
       tools: [
         createTool({
           name: "terminal",
@@ -742,6 +815,189 @@ Create a React component that is a PIXEL-PERFECT replica of the captured element
                 return JSON.stringify(contents);
               } catch (error) {
                 return `Error: ${error}`;
+              }
+            });
+          },
+        }),
+        createTool({
+          name: "editFile",
+          description:
+            "Make targeted search-and-replace edits to an EXISTING file without rewriting it. This is the preferred way to modify a file you've already created or read — it saves tokens and time versus re-emitting the whole file with createOrUpdateFiles. Each oldString must match the file exactly (including whitespace/indentation) and be unique, unless replaceAll is true.",
+          parameters: z.object({
+            path: z
+              .string()
+              .describe(
+                "The file path relative to project root (e.g., 'app/page.tsx')"
+              ),
+            edits: z
+              .array(
+                z.object({
+                  oldString: z
+                    .string()
+                    .describe(
+                      "Exact text to find — must be unique in the file unless replaceAll is true"
+                    ),
+                  newString: z
+                    .string()
+                    .describe("Replacement text (use \"\" to delete)"),
+                  replaceAll: z
+                    .boolean()
+                    .optional()
+                    .describe("Replace every occurrence (default false)"),
+                })
+              )
+              .describe("One or more search-replace edits, applied in order"),
+          }),
+          handler: async (
+            { path, edits },
+            { step, network }: Tool.Options<AgentState>
+          ) => {
+            const currentFiles = { ...(network.state.data.files || {}) };
+
+            const result = await step?.run("editFile", async () => {
+              let sandbox;
+              try {
+                sandbox = await getSandbox(sandboxId);
+              } catch (error) {
+                return {
+                  ok: false as const,
+                  error: `Could not connect to sandbox: ${String(error)}`,
+                };
+              }
+
+              let content: string;
+              try {
+                content = await sandbox.files.read(path);
+              } catch (error) {
+                return {
+                  ok: false as const,
+                  error: `Could not read "${path}". Use createOrUpdateFiles to create a NEW file; editFile only modifies existing ones. (${String(
+                    error
+                  )})`,
+                };
+              }
+
+              // Apply edits sequentially. Fail the WHOLE call on the first bad
+              // edit so the file is never left half-applied — the agent re-reads
+              // and retries. split().join() does literal replacement (no regex /
+              // "$&" footguns) and, because we require uniqueness unless
+              // replaceAll, replaces exactly the intended occurrence(s).
+              for (let i = 0; i < edits.length; i++) {
+                const { oldString, newString, replaceAll } = edits[i];
+                if (oldString === newString) {
+                  return {
+                    ok: false as const,
+                    error: `Edit ${i + 1}: oldString and newString are identical.`,
+                  };
+                }
+                const count = content.split(oldString).length - 1;
+                if (count === 0) {
+                  return {
+                    ok: false as const,
+                    error: `Edit ${
+                      i + 1
+                    }: oldString not found in "${path}". Re-read the file and copy the exact text including whitespace.`,
+                  };
+                }
+                if (count > 1 && !replaceAll) {
+                  return {
+                    ok: false as const,
+                    error: `Edit ${
+                      i + 1
+                    }: oldString is not unique in "${path}" (${count} matches). Add surrounding context to make it unique, or set replaceAll: true.`,
+                  };
+                }
+                content = content.split(oldString).join(newString);
+              }
+
+              try {
+                await sandbox.files.write(path, content);
+              } catch (error) {
+                return {
+                  ok: false as const,
+                  error: `Failed to write "${path}": ${String(error)}`,
+                };
+              }
+
+              return { ok: true as const, path, content };
+            });
+
+            if (result && typeof result === "object" && "ok" in result) {
+              if (result.ok) {
+                network.state.data.files = {
+                  ...currentFiles,
+                  [result.path]: result.content,
+                };
+                return `Successfully applied ${edits.length} edit(s) to ${result.path}.`;
+              }
+              return `Edit failed — ${result.error}`;
+            }
+            return "Unknown error occurred while editing the file.";
+          },
+        }),
+        createTool({
+          name: "searchProject",
+          description:
+            "Search the project's source for a string or regex and get back matching `path:line — snippet` lines. Use this to locate where a symbol, className, import, or piece of text lives WITHOUT reading whole files — e.g. before an editFile. Much cheaper than reading candidate files. Excludes node_modules/.next/.git automatically.",
+          parameters: z.object({
+            query: z
+              .string()
+              .describe(
+                "Literal text or an extended-regex (grep -E) pattern to search for"
+              ),
+            pathGlob: z
+              .string()
+              .optional()
+              .describe(
+                "Optional path or directory to scope the search, e.g. 'components' or 'app' (default: whole project)"
+              ),
+            maxResults: z
+              .number()
+              .optional()
+              .describe("Max matching lines to return (default 50, capped at 200)"),
+          }),
+          handler: async ({ query, pathGlob, maxResults }, { step }) => {
+            return await step?.run("searchProject", async () => {
+              const cap = Math.min(Math.max(maxResults ?? 50, 1), 200);
+              // grep is always present; -r recurses, so scope must be a path/dir,
+              // not a "/**" glob — strip a trailing wildcard if the model adds one.
+              const scope =
+                (pathGlob || "").replace(/\/?\*+$/g, "").trim() || ".";
+              // Single-quote args so the shell can't interpret them; escape any
+              // embedded single quotes. Piping to head keeps grep's exit code from
+              // throwing on "no matches" (head exits 0).
+              const q = query.replace(/'/g, `'\\''`);
+              const sc = scope.replace(/'/g, `'\\''`);
+              const command =
+                `grep -rnI --exclude-dir=node_modules --exclude-dir=.next ` +
+                `--exclude-dir=.git -E -e '${q}' '${sc}' 2>/dev/null | head -n ${cap}`;
+              try {
+                const sandbox = await getSandbox(sandboxId);
+                const buffers = { stdout: "", stderr: "" };
+                const res = await sandbox.commands.run(command, {
+                  onStdout: (d: string) => {
+                    buffers.stdout += d;
+                  },
+                  onStderr: (d: string) => {
+                    buffers.stderr += d;
+                  },
+                });
+                const raw = (res.stdout || buffers.stdout || "").trim();
+                if (!raw) {
+                  return `No matches for "${query}"${
+                    pathGlob ? ` in ${pathGlob}` : ""
+                  }.`;
+                }
+                // Truncate long (e.g. minified) lines to stay token-cheap.
+                const lines = raw
+                  .split("\n")
+                  .slice(0, cap)
+                  .map((l) => (l.length > 240 ? l.slice(0, 240) + " …" : l));
+                return lines.join("\n");
+              } catch (error) {
+                return `No matches or search error for "${query}": ${String(
+                  error
+                )}`;
               }
             });
           },
@@ -895,6 +1151,28 @@ Create a React component that is a PIXEL-PERFECT replica of the captured element
       ],
       lifecycle: {
         onResponse: async ({ result, network }) => {
+          // Per-inference instrumentation (see counters above).
+          inferenceCount += 1;
+          const nowTs = Date.now();
+          const dt = ((nowTs - lastInferenceAt) / 1000).toFixed(1);
+          lastInferenceAt = nowTs;
+          const toolNames: string[] = [];
+          for (const m of result.output || []) {
+            const mm = m as {
+              type?: string;
+              tools?: Array<{ name?: string }>;
+            };
+            if (mm?.type === "tool_call" && Array.isArray(mm.tools)) {
+              for (const t of mm.tools) if (t?.name) toolNames.push(t.name);
+            }
+          }
+          const textLen = (lastAssistantTextMessageContent(result) || "").length;
+          console.log(
+            `[runChatAgent] inference #${inferenceCount} took ${dt}s — tools: [${
+              toolNames.join(", ") || "none"
+            }] — textLen: ${textLen}`
+          );
+
           const lastAssistantTextMessageText =
             lastAssistantTextMessageContent(result);
           if (lastAssistantTextMessageText && network) {
@@ -1001,16 +1279,37 @@ Create a React component that is a PIXEL-PERFECT replica of the captured element
     // Priority: userId (what frontend subscribes to) > channelKey > screenId
     const targetChannel = userId || channelKey || screenId;
 
+    // Build the volatile per-turn context: the active-screen anchor + a paths-only
+    // repo map (every file as `path — one-liner`, last turn's edits marked ▸). It is
+    // injected INSIDE the current user turn — never persisted to the messages table —
+    // so the prior history stays an append-only, cacheable prefix while only this
+    // small, fresh map is paid for each turn. Source files/meta from what the agent
+    // actually works against: the seeded set (parent's app on flow builds, else the
+    // screen's own files) plus the screen's accumulated fileMeta.
+    const contextFileMeta: FileMeta = isFlowBuild
+      ? { ...(parentScreen?.fileMeta || {}), ...(screen?.fileMeta || {}) }
+      : screen?.fileMeta || {};
+    const anchor = buildActiveAnchor(screen);
+    const repoMap = buildRepoMap(seedFiles, contextFileMeta, screen?.recentEdits);
+    const contextPreamble = `${anchor}\n\n${repoMap}`;
+    const messageWithContext = `${contextPreamble}\n\n---\n\n${message}`;
+
+    console.log(
+      `[runChatAgent] injected context: ${
+        repoMap.split("\n").length
+      } repo-map lines, ${contextPreamble.length} chars (history kept clean for cache)`
+    );
+
     // Format message for the agent
     // For vision models with images, create multimodal content array
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let runMessage: any = message;
+    let runMessage: any = messageWithContext;
 
     if (imageUrls.length > 0) {
       // Create multimodal content array with text and images
       // Using OpenAI-compatible format (snake_case image_url)
       runMessage = [
-        { type: "text", text: message },
+        { type: "text", text: messageWithContext },
         ...imageUrls.map((url: string) => ({
           type: "image_url",
           image_url: { url },
@@ -1112,6 +1411,8 @@ Create a React component that is a PIXEL-PERFECT replica of the captured element
       hasFiles,
       filesCount: Object.keys(result.state.data.files || {}).length,
       summaryLength: result.state.data.summary?.length || 0,
+      inferences: inferenceCount,
+      totalAgentSeconds: ((Date.now() - runStartedAt) / 1000).toFixed(1),
     });
 
     // Consider it an error only if we don't have a summary
@@ -1150,6 +1451,26 @@ Create a React component that is a PIXEL-PERFECT replica of the captured element
             undefined
           : undefined;
 
+        // Merge this turn's reported changes into the persistent file map (the
+        // source of next turn's repo-map). The <files_summary> block is parsed into
+        // structured changes here and is NO LONGER stored in the assistant message —
+        // descriptions live in fileMeta, narrative lives in the short summary.
+        const changes = parseChanges(result.state.data.filesSummary);
+        const now = Date.now();
+        const mergedFileMeta: FileMeta = { ...(screen?.fileMeta || {}) };
+        for (const c of changes) {
+          mergedFileMeta[c.path] = {
+            description:
+              c.description || mergedFileMeta[c.path]?.description || "",
+            status: c.status,
+            updatedAt: now,
+          };
+        }
+        // Mark the files touched this turn so next turn's map flags them with ▸.
+        const recentEdits = changes
+          .filter((c) => c.status !== "deleted")
+          .map((c) => c.path);
+
         const response = await fetch(`${convexHttpUrl}/inngest/updateScreen`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -1158,6 +1479,8 @@ Create a React component that is a PIXEL-PERFECT replica of the captured element
             sandboxUrl,
             sandboxId,
             files: result.state.data.files,
+            fileMeta: mergedFileMeta,
+            recentEdits,
             ...(title && { title }),
             ...(route && { route }),
           }),
@@ -1171,11 +1494,14 @@ Create a React component that is a PIXEL-PERFECT replica of the captured element
         return { success: true };
       });
 
-      // Create assistant message with summary and files_summary for context
+      // Create the assistant message for chat history. We store ONLY the short,
+      // human-readable summary now — the <files_summary> block is parsed into
+      // screen.fileMeta (above) and surfaced through the repo-map, so replaying it
+      // inside every message would just bloat history and rot the prompt cache.
       await step.run("create-assistant-message", async () => {
         const convexHttpUrl = getConvexHttpUrl();
 
-        // Clean up the summary for display (remove tags)
+        // Strip all control tags, leaving the plain summary shown in chat + replayed.
         const cleanSummary = (result.state.data.summary || "")
           .replace(/<task_summary>/gi, "")
           .replace(/<\/task_summary>/gi, "")
@@ -1184,16 +1510,8 @@ Create a React component that is a PIXEL-PERFECT replica of the captured element
           .replace(/<route>[\s\S]*?<\/route>/gi, "")
           .trim();
 
-        // Get the agent-generated files_summary (keep the tags for parsing later)
-        const filesSummary = result.state.data.filesSummary || "";
-
-        // Combine summary with files_summary for storage
-        // The files_summary is not displayed to user but provides context for follow-up messages
-        const messageContent = filesSummary
-          ? `${
-              cleanSummary || "UI generation completed successfully."
-            }\n\n${filesSummary}`
-          : cleanSummary || "UI generation completed successfully.";
+        const messageContent =
+          cleanSummary || "UI generation completed successfully.";
 
         // Include reasoning_details for reasoning models
         const reasoningDetails = result.state.data.reasoningDetails;

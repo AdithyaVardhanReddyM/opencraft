@@ -3,11 +3,16 @@ import { NextRequest, NextResponse } from "next/server";
 // Models that require reasoning token storage. Per OpenRouter docs,
 // reasoning_details must be preserved and re-submitted across tool calls for
 // these reasoning models (Gemini, Moonshot/Kimi, MiniMax all require this).
-const REASONING_MODELS = [
-  "google/gemini-3.5-flash",
-  "moonshotai/kimi-k2.7-code",
-  "minimax/minimax-m3",
-];
+const REASONING_MODELS = ["google/gemini-3.5-flash"];
+
+// Reasoning configuration sent to OpenRouter for reasoning-capable models.
+// The agent runs MANY inferences per build (one per tool call), and reasoning is
+// the single largest latency cost — at the model's default (high) effort it can
+// "think" for tens of seconds on EVERY call. We cap it to "low": the model still
+// reasons, but briefly, which cuts per-inference latency dramatically while the
+// strengthened design guidance in the system prompt carries output quality.
+// Tune here (e.g. effort: "medium", or { max_tokens: 1024 }) in one place.
+const REASONING_CONFIG = { effort: "low" as const };
 
 /**
  * Check if a model requires reasoning tokens
@@ -245,11 +250,18 @@ function stripReasoningDetails(
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const modelId = body.model as string;
+    // The agent encodes "reasoning off" as a ":noreason" model suffix (default is
+    // OFF, set by the UI toggle). Strip it here, forward the clean model id to
+    // OpenRouter, and only treat this as a reasoning request when it was NOT
+    // explicitly disabled.
+    const rawModel = (body.model as string) || "";
+    const reasoningDisabled = /:noreason$/.test(rawModel);
+    const modelId = rawModel.replace(/:noreason$/, "");
     const messages = body.messages as
       | Array<Record<string, unknown>>
       | undefined;
-    const isReasoningModel = modelId && requiresReasoningTokens(modelId);
+    const isReasoningModel =
+      !!modelId && requiresReasoningTokens(modelId) && !reasoningDisabled;
 
     // Entry log: confirms the proxy is actually in the request path and shows
     // the request shape. If this line never appears in the dev terminal during
@@ -262,8 +274,9 @@ export async function POST(req: NextRequest) {
       }, reasoningModel=${!!isReasoningModel}, toolResults=${hasToolResults}, convexStore=${!!getConvexHttpUrl()}`
     );
 
-    // Build the request body for OpenRouter
-    const openrouterBody = { ...body };
+    // Build the request body for OpenRouter, forwarding the cleaned model id
+    // (suffix stripped) so OpenRouter always receives a valid model.
+    const openrouterBody = { ...body, model: modelId };
 
     // Add reasoning parameter for models that require it
     if (isReasoningModel) {
@@ -285,13 +298,13 @@ export async function POST(req: NextRequest) {
           );
           openrouterBody.messages = stripReasoningDetails(injected);
         } else {
-          openrouterBody.reasoning = { enabled: true };
+          openrouterBody.reasoning = REASONING_CONFIG;
           openrouterBody.messages = injected;
         }
       } else {
-        // First turn (no tool results): enable reasoning normally. This is the
-        // turn the reasoning "thinking" stream renders from.
-        openrouterBody.reasoning = { enabled: true };
+        // First turn (no tool results): enable reasoning. This is the turn the
+        // reasoning "thinking" stream renders from.
+        openrouterBody.reasoning = REASONING_CONFIG;
       }
     }
 
